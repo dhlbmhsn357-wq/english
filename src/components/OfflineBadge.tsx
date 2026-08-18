@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ConnectionIcons } from './icons';
 import styles from './OfflineBadge.module.css';
 
 export function OfflineBadge() {
@@ -13,7 +14,11 @@ export function OfflineBadge() {
   }, []);
 
   if (online) return null;
-  return <div className={styles.badge} role="status">📴 تعمل الآن بدون إنترنت</div>;
+  return (
+    <div className={styles.badge} role="status">
+      <ConnectionIcons.offline size={13} strokeWidth={2} /> تعمل الآن بدون إنترنت
+    </div>
+  );
 }
 
 // نسخة صغيرة للاستخدام جوه الـ Header (بند 1-A: حالة الاتصال)

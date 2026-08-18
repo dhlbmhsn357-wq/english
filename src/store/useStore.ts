@@ -5,7 +5,8 @@
 import { create } from 'zustand';
 import type {
   AppState, DailyMode, StoppedEntry, CarryoverItem,
-  VocabWord, WeeklyWinEntry, LearningSession, Difficulty, Theme, FontFamily, BgStyle
+  VocabWord, WeeklyWinEntry, LearningSession, Difficulty, Theme, FontFamily, BgStyle,
+  LearningSource, CustomSourceStatus
 } from '../types';
 import { storage, STORAGE_KEY, LEGACY_KEY_V5, LEGACY_KEY_V4 } from '../lib/storage';
 import { defaultState, migrateState } from '../lib/migration';
@@ -84,6 +85,13 @@ interface Store extends AppState, UIState {
   // ---- topic ----
   newTopic: () => void;
 
+  // ---- library (مصادر يضيفها المستخدم) ----
+  addSource: (input: Partial<LearningSource> & { title: string }) => LearningSource;
+  updateSource: (id: string, patch: Partial<LearningSource>) => void;
+  updateSourceUnits: (id: string, completedUnits: number) => void;
+  setSourceStatus: (id: string, status: CustomSourceStatus) => void;
+  deleteSource: (id: string) => void;
+
   // ---- import/export ----
   exportSnapshot: () => AppState;
   importSnapshot: (data: unknown) => { ok: boolean; reason?: string };
@@ -102,6 +110,7 @@ function snapshot(s: Store): AppState {
     progressState: s.progressState,
     vocabulary: s.vocabulary,
     carryoverState: s.carryoverState,
+    library: s.library,
     sessions: s.sessions,
     attendance: s.attendance,
     wins: s.wins
@@ -475,6 +484,76 @@ export const useStore = create<Store>((set, get) => ({
   newTopic: () => {
     set(st => ({ progressState: { ...st.progressState, topicIndex: st.progressState.topicIndex + 1 } }));
     get().save();
+  },
+
+  // ---------------- Library (مصادر المستخدم) ----------------
+  addSource: (input) => {
+    const now = Date.now();
+    const source: LearningSource = {
+      id: genId(),
+      title: input.title.trim(),
+      description: input.description?.trim() || undefined,
+      url: input.url?.trim() || null,
+      coverImage: input.coverImage || null,
+      contentType: input.contentType || 'other',
+      format: input.format || 'mixed',
+      skills: input.skills || [],
+      trackingType: input.trackingType || 'manual',
+      totalUnits: input.totalUnits ?? null,
+      completedUnits: input.completedUnits ?? 0,
+      goal: input.goal || undefined,
+      priority: input.priority || 'secondary',
+      status: 'not-started',
+      notes: input.notes || undefined,
+      lastActivityAt: null,
+      createdAt: now,
+      updatedAt: now
+    };
+    set(st => ({ library: { customSources: [source, ...st.library.customSources] } }));
+    get().save();
+    get().showToast('تمت إضافة المصدر إلى مكتبتك');
+    return source;
+  },
+
+  updateSource: (id, patch) => {
+    set(st => ({
+      library: {
+        customSources: st.library.customSources.map(src =>
+          src.id === id ? { ...src, ...patch, updatedAt: Date.now() } : src
+        )
+      }
+    }));
+    get().save();
+  },
+
+  updateSourceUnits: (id, completedUnits) => {
+    set(st => ({
+      library: {
+        customSources: st.library.customSources.map(src => {
+          if (src.id !== id) return src;
+          const total = src.totalUnits ?? null;
+          const clamped = Math.max(0, total != null ? Math.min(completedUnits, total) : completedUnits);
+          const status: CustomSourceStatus =
+            total != null && clamped >= total ? 'completed' : clamped > 0 ? 'in-progress' : src.status === 'archived' ? 'archived' : 'not-started';
+          return { ...src, completedUnits: clamped, status, lastActivityAt: Date.now(), updatedAt: Date.now() };
+        })
+      }
+    }));
+    get().save();
+    get().showToast('تم تحديث التقدم');
+  },
+
+  setSourceStatus: (id, status) => {
+    set(st => ({
+      library: { customSources: st.library.customSources.map(src => (src.id === id ? { ...src, status, updatedAt: Date.now() } : src)) }
+    }));
+    get().save();
+  },
+
+  deleteSource: (id) => {
+    set(st => ({ library: { customSources: st.library.customSources.filter(src => src.id !== id) } }));
+    get().save();
+    get().showToast('تم حذف المصدر');
   },
 
   // ---------------- Import / Export ----------------

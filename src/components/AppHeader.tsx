@@ -1,6 +1,8 @@
 import { useStore } from '../store/useStore';
 import { ConnectionDot } from './OfflineBadge';
 import { formatArabicDate, greetingForNow, todayKey } from '../lib/dateUtils';
+import { IconButton } from './ui/IconButton';
+import { ActionIcons } from './icons';
 import styles from './AppHeader.module.css';
 
 interface AppHeaderProps {
@@ -14,18 +16,17 @@ export function AppHeader({ onOpenSettings }: AppHeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.left}>
-        <div className={styles.greeting}>{greetingForNow()} 👋</div>
+        <div className={styles.greeting}>{greetingForNow()}</div>
         <div className={styles.appName}>مسار محسن</div>
         <div className={styles.date}>{formatArabicDate()}</div>
       </div>
       <div className={styles.right}>
         <ConnectionDot />
         <div className={`${styles.streak} ${attendedToday ? styles.streakActive : ''}`}>
-          🔥 {streak}
+          <ActionIcons.streak size={15} strokeWidth={2} />
+          {streak}
         </div>
-        <button className={styles.settingsBtn} onClick={onOpenSettings} aria-label="تخصيص المظهر">
-          🎨
-        </button>
+        <IconButton icon={ActionIcons.settings} label="الإعدادات والمظهر" onClick={onOpenSettings} />
       </div>
     </header>
   );

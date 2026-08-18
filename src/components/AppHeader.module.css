@@ -13,6 +13,9 @@
 .right { display: flex; align-items: center; gap: 8px; }
 
 .streak {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-muted);
@@ -23,16 +26,7 @@
   transition: all var(--motion-base) var(--ease-out);
 }
 .streakActive {
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
-  color: #0f1923;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: #fff;
   border-color: transparent;
-}
-
-.settingsBtn {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  width: 40px;
-  height: 40px;
-  font-size: 17px;
 }

@@ -6,9 +6,9 @@ export type DailyMode = 'busy' | 'free';
 export type Difficulty = 'easy' | 'mid' | 'hard';
 export type TaskType = 'listening' | 'vocab' | 'zad';
 export type SourceState = 'not-started' | 'in-progress' | 'completed' | 'stopped' | 'needs-review';
-export type Theme = 'dark' | 'sandy' | 'sky' | 'green' | 'rose';
+export type Theme = 'dark' | 'light' | 'system';
 export type FontFamily = 'Tajawal' | 'Cairo' | 'Amiri';
-export type BgStyle = 'none' | 'stars' | 'geo' | 'warm' | 'custom';
+export type BgStyle = 'none' | 'custom';
 
 // ------------------------------------------------------------
 // Learning Session — النموذج المحوري (بند 29)
@@ -123,6 +123,51 @@ export interface VocabularyState {
   vocab: VocabWord[];
 }
 
+// ------------------------------------------------------------
+// Learning Library — مصادر يضيفها المستخدم بنفسه (بجانب مصادر
+// الخطة الثابتة SOURCES). contentType و trackingType منفصلين
+// عن قصد: بودكاست ممكن يتتابع بالحلقات أو بالدقايق، كتاب ممكن
+// يتتابع بالصفحات أو الفصول... إلخ.
+// ------------------------------------------------------------
+export type SourceContentType =
+  | 'listening' | 'speaking' | 'video' | 'book' | 'course'
+  | 'podcast' | 'article' | 'website' | 'vocabulary' | 'other';
+
+export type SourceFormat = 'audio' | 'video' | 'text' | 'mixed';
+
+export type SourceSkill = 'listening' | 'speaking' | 'reading' | 'vocabulary' | 'islamic' | 'general';
+
+export type TrackingType = 'episodes' | 'lessons' | 'pages' | 'chapters' | 'minutes' | 'sessions' | 'manual';
+
+export type SourcePriority = 'primary' | 'secondary' | 'optional';
+
+export type CustomSourceStatus = 'not-started' | 'in-progress' | 'paused' | 'completed' | 'archived';
+
+export interface LearningSource {
+  id: string;
+  title: string;
+  description?: string;
+  url?: string | null;
+  coverImage?: string | null;
+  contentType: SourceContentType;
+  format: SourceFormat;
+  skills: SourceSkill[];
+  trackingType: TrackingType;
+  totalUnits?: number | null;
+  completedUnits: number;
+  goal?: string;
+  priority: SourcePriority;
+  status: CustomSourceStatus;
+  notes?: string;
+  lastActivityAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface LibraryState {
+  customSources: LearningSource[];
+}
+
 export interface CarryoverState {
   carryover: CarryoverItem[];
 }
@@ -156,6 +201,7 @@ export interface AppState {
   progressState: ProgressState;
   vocabulary: VocabularyState;
   carryoverState: CarryoverState;
+  library: LibraryState;
   sessions: SessionsState;
   attendance: AttendanceState;
   wins: WinsState;

@@ -1,5 +1,7 @@
 import { useStore } from '../../store/useStore';
 import { TOPICS } from '../../lib/staticData';
+import { ContentTypeIcons, ActionIcons } from '../../components/icons';
+import { Button } from '../../components/ui/Button';
 import styles from './SpeakingChallengeCard.module.css';
 
 export function SpeakingChallengeCard() {
@@ -14,13 +16,13 @@ export function SpeakingChallengeCard() {
 
   return (
     <div className={styles.card}>
-      <div className={styles.title}>💬 Speaking Challenge</div>
+      <div className={styles.title}><ContentTypeIcons.speaking size={15} strokeWidth={2} /> تحدي المحادثة</div>
       <div className={styles.topicBox}>
         <div className={styles.topicLabel}>الموضوع:</div>
         <div className={styles.topicText}>{topic}</div>
       </div>
-      <button className={styles.startBtn} onClick={openChat}>🎙️ ابدأ المحادثة</button>
-      <button className={styles.skipBtn} onClick={newTopic}>🔄 موضوع تاني</button>
+      <Button variant="primary" full icon={ContentTypeIcons.speaking} onClick={openChat}>ابدأ المحادثة</Button>
+      <Button variant="ghost" size="sm" full icon={ActionIcons.expand} onClick={newTopic}>موضوع تاني</Button>
     </div>
   );
 }

@@ -33,15 +33,15 @@ export function WeeklyReviewCard() {
   if (review.totalSessions === 0) {
     return (
       <div className={styles.wrap}>
-        <div className={styles.title}>📅 مراجعة الأسبوع</div>
-        <EmptyState icon="🌱" title="لسه بداية الأسبوع" subtitle="اعمل أول جلسة وهتلاقي هنا ملخص أسبوعي حقيقي." />
+        <div className={styles.title}>مراجعة الأسبوع</div>
+        <EmptyState title="لسه بداية الأسبوع" subtitle="اعمل أول جلسة وهتلاقي هنا ملخص أسبوعي حقيقي." />
       </div>
     );
   }
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.title}>📅 مراجعة الأسبوع</div>
+      <div className={styles.title}>مراجعة الأسبوع</div>
       <ul className={styles.list}>
         <li>درست <strong>{review.daysStudied}</strong> أيام</li>
         <li>أنجزت <strong>{review.totalSessions}</strong> جلسات</li>

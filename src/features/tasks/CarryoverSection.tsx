@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { ActionIcons } from '../../components/icons';
+import { Button } from '../../components/ui/Button';
+import { IconButton } from '../../components/ui/IconButton';
 import type { CarryoverItem } from '../../types';
 import styles from './CarryoverSection.module.css';
 
@@ -21,7 +24,7 @@ export function CarryoverSection({ onStart }: CarryoverSectionProps) {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.title}>⏩ متأخرات تحتاج حسم</div>
+      <div className={styles.title}><ActionIcons.carryover size={14} strokeWidth={2} /> متأخرات تحتاج حسم</div>
       <div className={styles.list}>
         {visible.map(item => (
           <CarryoverRow key={item.id} item={item} onStart={onStart} onDismiss={() => dismissCarryover(item.id)} />
@@ -44,12 +47,10 @@ function CarryoverRow({ item, onStart, onDismiss }: { item: CarryoverItem; onSta
         <div className={styles.meta}>الحلقة {item.episode} • متبقي {item.remainMinutes} دقيقة • من {item.fromDate}</div>
       </div>
       <div className={styles.actions}>
-        <button className={styles.completeBtn} onClick={() => onStart(item.originalTaskId, item.sourceName, item.episode, true, item.id)}>
+        <Button variant="secondary" size="sm" onClick={() => onStart(item.originalTaskId, item.sourceName, item.episode, true, item.id)}>
           أكمل الآن
-        </button>
-        <button className={styles.dismissBtn} onClick={onDismiss} title="اعتبرها ملغاة" aria-label="اعتبر هذه المهمة ملغاة">
-          ✕
-        </button>
+        </Button>
+        <IconButton icon={ActionIcons.close} size="sm" label="اعتبر هذه المهمة ملغاة" onClick={onDismiss} />
       </div>
     </div>
   );

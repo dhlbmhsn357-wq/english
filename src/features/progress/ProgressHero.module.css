@@ -1,0 +1,24 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.ring { position: relative; flex-shrink: 0; width: 128px; height: 128px; }
+.progressCircle { transition: stroke-dashoffset var(--motion-slow) var(--ease-out); }
+.ringLabel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ringPct { font-size: var(--text-2xl); font-weight: 900; color: var(--text); font-family: var(--font-heading); }
+.ringSub { font-size: 10px; color: var(--text-faint); }
+
+.stats { display: flex; flex-direction: column; gap: var(--space-3); flex: 1; }
+.stat { display: flex; align-items: baseline; justify-content: space-between; }
+.statNum { font-size: var(--text-lg); font-weight: 800; color: var(--text); }
+.statLabel { font-size: var(--text-xs); color: var(--text-muted); }
+
+@media (max-width: 380px) {
+  .wrap { flex-direction: column; }
+}

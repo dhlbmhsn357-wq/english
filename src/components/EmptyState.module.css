@@ -3,16 +3,14 @@
   padding: var(--space-8) var(--space-5);
   color: var(--text-muted);
 }
-.icon { font-size: 32px; margin-bottom: var(--space-2); opacity: 0.7; }
+.iconWrap {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 52px; height: 52px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  color: var(--text-faint);
+  margin-bottom: var(--space-3);
+}
 .title { font-size: var(--text-base); font-weight: 700; color: var(--text); margin-bottom: 4px; }
 .subtitle { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
-.action {
-  margin-top: var(--space-4);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--gold);
-  border-radius: var(--radius-sm);
-  padding: 10px 18px;
-  font-size: var(--text-sm);
-  font-weight: 700;
-}
+.actionBtn { margin-top: var(--space-4); }

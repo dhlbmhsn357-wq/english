@@ -78,6 +78,19 @@ export const PDF_BOOKS = {
   ]
 };
 
+// نوع المحتوى لكل مصدر ثابت (لعرض الأيقونة الصح في المكتبة/التقدم)
+export const STATIC_CONTENT_TYPE: Record<string, 'video' | 'podcast' | 'course'> = {
+  'NAK — سورة الجمعة': 'video',
+  'أسماء الله الحسنى': 'video',
+  "Qur'an 30 for 30": 'video',
+  'السيرة — Mufti Menk': 'video',
+  'عباد الرحمن — Dr. Omar Suleiman': 'video',
+  'Listening Time Podcast': 'podcast',
+  'Speak English With Class': 'podcast',
+  'Zad: Aqeedah': 'course', 'Zad: Seerah': 'course', 'Zad: Fiqh': 'course',
+  'Zad: Hadith': 'course', 'Zad: Tafsir': 'course', 'Zad: Tarbiyah': 'course'
+};
+
 export const PHASE1 = ['NAK — سورة الجمعة', 'أسماء الله الحسنى'];
 export const PHASE2 = ['السيرة — Mufti Menk', "Qur'an 30 for 30"];
 export const PHASE3 = ['عباد الرحمن — Dr. Omar Suleiman'];
@@ -117,13 +130,6 @@ export const TOPICS = [
   "What are common misconceptions about Islam?",
   "How does gratitude (shukr) change your perspective?"
 ];
-
-export const BG_STYLES: Record<string, string> = {
-  none: 'none',
-  stars: 'radial-gradient(ellipse at 20% 30%, rgba(100,150,255,0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 70%, rgba(201,168,76,0.08) 0%, transparent 50%)',
-  geo: 'repeating-linear-gradient(45deg, rgba(201,168,76,0.03) 0px, rgba(201,168,76,0.03) 1px, transparent 1px, transparent 40px)',
-  warm: 'radial-gradient(ellipse at 50% 0%, rgba(201,120,50,0.12) 0%, transparent 60%)'
-};
 
 export const NOTIF_TIME_LABELS: Record<string, string> = {
   '07:00': '7 صبح', '09:00': '9 صبح', '12:00': '12 ظهر',

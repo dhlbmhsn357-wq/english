@@ -1,0 +1,19 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
+}
+.btn:hover { background: var(--surface-3); color: var(--text); border-color: var(--border-strong); }
+.btn:active { transform: scale(0.94); }
+
+.active { background: var(--gold-dim); color: var(--primary); border-color: transparent; }
+.sm { width: 32px; height: 32px; border-radius: var(--radius-sm); }

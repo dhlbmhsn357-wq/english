@@ -31,7 +31,7 @@ export function VocabReviewSheet({ open, onClose, mode }: VocabReviewSheetProps)
   if (words.length === 0) {
     return (
       <BottomSheet open={open} onClose={onClose} title="مراجعة المفردات">
-        <EmptyState icon="🌤️" title="لا توجد كلمات للمراجعة اليوم" subtitle="ارجع بكرة أو راجع كل الكلمات." />
+        <EmptyState title="لا توجد كلمات للمراجعة اليوم" subtitle="ارجع بكرة أو راجع كل الكلمات." />
       </BottomSheet>
     );
   }

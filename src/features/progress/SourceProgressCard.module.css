@@ -5,16 +5,18 @@
   padding: var(--space-4);
 }
 
-.headerRow { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); }
-.name { font-size: var(--text-base); font-weight: 700; color: var(--text); }
-.count { font-size: var(--text-xs); color: var(--text-muted); }
+.headerRow { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.iconWrap { flex-shrink: 0; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 7px; background: var(--surface-2); color: var(--primary); }
+.name { font-size: var(--text-base); font-weight: 700; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.count { font-size: var(--text-xs); color: var(--text-muted); flex-shrink: 0; }
+.pct { color: var(--text-faint); }
 
 .barTrack { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-bottom: var(--space-3); }
 .barFill { height: 100%; border-radius: 3px; transition: width var(--motion-slow) var(--ease-out); }
 
 .footerRow { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .nextLabel { font-size: var(--text-xs); color: var(--text-muted); }
-.completeLabel { font-size: var(--text-xs); color: var(--green); font-weight: 700; }
+.completeLabel { display: flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--success); font-weight: 700; }
 
 .editRow { flex-shrink: 0; }
 .editInput {
@@ -28,4 +30,4 @@
   text-align: center;
   direction: ltr;
 }
-.editInput:focus { outline: none; border-color: var(--gold); }
+.editInput:focus { outline: none; border-color: var(--primary); }

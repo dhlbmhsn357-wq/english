@@ -38,22 +38,30 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // تطبيق الثيم/الخط على document
+  // تطبيق الثيم/الخط على document — Light/Dark/System حقيقيين
   useEffect(() => {
-    document.body.setAttribute('data-theme', theme === 'dark' ? '' : theme);
+    const media = window.matchMedia('(prefers-color-scheme: light)');
+
+    function applyTheme() {
+      const resolved = theme === 'system' ? (media.matches ? 'light' : 'dark') : theme;
+      document.documentElement.setAttribute('data-theme', resolved === 'light' ? 'light' : 'dark');
+    }
+
+    applyTheme();
+    if (theme === 'system') {
+      media.addEventListener('change', applyTheme);
+      return () => media.removeEventListener('change', applyTheme);
+    }
+  }, [theme]);
+
+  useEffect(() => {
     document.documentElement.style.setProperty('--font-body', `'${font}', sans-serif`);
     const FONT_SIZES = [13, 14, 15, 16, 18];
     document.documentElement.style.setProperty('--font-size-base', FONT_SIZES[fontSize] + 'px');
-    const BG_STYLES: Record<string, string> = {
-      none: 'none',
-      stars: 'radial-gradient(ellipse at 20% 30%, rgba(100,150,255,0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 70%, rgba(201,168,76,0.08) 0%, transparent 50%)',
-      geo: 'repeating-linear-gradient(45deg, rgba(201,168,76,0.03) 0px, rgba(201,168,76,0.03) 1px, transparent 1px, transparent 40px)',
-      warm: 'radial-gradient(ellipse at 50% 0%, rgba(201,120,50,0.12) 0%, transparent 60%)'
-    };
-    const bgVal = bg === 'custom' && customBg ? `url(${customBg})` : (BG_STYLES[bg] || 'none');
+    const bgVal = bg === 'custom' && customBg ? `url(${customBg})` : 'none';
     document.documentElement.style.setProperty('--bg-img', bgVal);
     document.documentElement.style.setProperty('--bg-opacity', String(bgOpacity));
-  }, [theme, font, fontSize, bg, customBg, bgOpacity]);
+  }, [font, fontSize, bg, customBg, bgOpacity]);
 
   function handleStartSession(taskId: string, sourceName: string, episode: number, isCarryover: boolean, carryId?: string) {
     startSession(taskId, sourceName, episode, isCarryover, carryId);

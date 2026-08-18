@@ -1,5 +1,6 @@
 import { useStore } from '../../store/useStore';
 import { todayKey } from '../../lib/dateUtils';
+import { ActionIcons } from '../../components/icons';
 import type { DailyMode } from '../../types';
 import styles from './DailyModeSelector.module.css';
 
@@ -21,7 +22,7 @@ export function DailyModeSelector() {
           className={`${styles.option} ${styles.busy} ${currentMode === 'busy' ? styles.active : ''}`}
           onClick={() => handleSelect('busy')}
         >
-          <span className={styles.icon}>⚡</span>
+          <ActionIcons.busy size={20} strokeWidth={1.8} className={styles.icon} />
           <span className={styles.name}>مضغوط</span>
           <span className={styles.desc}>نركز على أهم 2–3 مهام فقط</span>
         </button>
@@ -29,7 +30,7 @@ export function DailyModeSelector() {
           className={`${styles.option} ${styles.free} ${currentMode === 'free' ? styles.active : ''}`}
           onClick={() => handleSelect('free')}
         >
-          <span className={styles.icon}>🌙</span>
+          <ActionIcons.free size={20} strokeWidth={1.8} className={styles.icon} />
           <span className={styles.name}>مفضي</span>
           <span className={styles.desc}>الخطة الكاملة لليوم</span>
         </button>

@@ -22,11 +22,11 @@
   text-align: center;
 }
 
-.icon { font-size: 22px; }
+.icon { color: var(--text-muted); }
 .name { font-size: var(--text-base); font-weight: 800; color: var(--text); }
 .desc { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.4; }
 
-.busy.active { background: rgba(239,68,68,0.1); border-color: #ef4444; }
-.busy.active .name { color: #f28b8b; }
-.free.active { background: rgba(34,197,94,0.1); border-color: var(--green); }
-.free.active .name { color: #86efac; }
+.busy.active { background: var(--gold-dim); border-color: var(--primary); }
+.busy.active .icon, .busy.active .name { color: var(--primary); }
+.free.active { background: var(--teal-dim); border-color: var(--secondary); }
+.free.active .icon, .free.active .name { color: var(--secondary); }

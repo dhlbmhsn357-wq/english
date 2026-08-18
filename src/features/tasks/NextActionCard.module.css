@@ -1,5 +1,5 @@
 .card {
-  background: linear-gradient(160deg, rgba(201,168,76,0.12), rgba(45,212,191,0.04) 70%);
+  background: linear-gradient(160deg, var(--gold-dim), var(--teal-dim) 70%);
   border: 1.5px solid var(--border-strong);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
@@ -9,19 +9,22 @@
 }
 
 .carryVariant {
-  background: linear-gradient(160deg, rgba(251,146,60,0.14), rgba(251,146,60,0.03) 70%);
-  border-color: rgba(251,146,60,0.35);
-  box-shadow: 0 4px 18px rgba(251,146,60,0.14);
+  background: linear-gradient(160deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.03) 70%);
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.14);
 }
 
 .label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--text-xs);
   font-weight: 900;
-  color: var(--gold);
+  color: var(--primary);
   letter-spacing: 0.3px;
   margin-bottom: var(--space-2);
 }
-.carryVariant .label { color: var(--orange); }
+.carryVariant .label { color: var(--warning); }
 
 .name {
   font-size: var(--text-xl);
@@ -34,7 +37,7 @@
 
 .meta { font-size: var(--text-sm); color: var(--text-muted); margin-bottom: var(--space-4); }
 
-.metaRow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: var(--space-4); }
+.metaRow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: var(--space-3); }
 .metaChip {
   font-size: var(--text-xs);
   color: var(--text-muted);
@@ -44,18 +47,7 @@
   padding: 4px 10px;
 }
 
-.startBtn {
-  width: 100%;
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
-  color: #0f1923;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 13px;
-  font-family: var(--font-heading);
-  font-size: var(--text-base);
-  font-weight: 900;
-  transition: transform var(--motion-fast) var(--ease-out);
-}
-.startBtn:active { transform: scale(0.97); }
-
-.carryVariant .startBtn { background: linear-gradient(135deg, var(--orange), #fdba74); }
+.progressWrap { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
+.progressBarTrack { flex: 1; height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.progressBarFill { height: 100%; background: var(--primary); border-radius: 3px; transition: width var(--motion-slow) var(--ease-out); }
+.progressPct { font-size: var(--text-xs); color: var(--text-muted); font-weight: 700; }

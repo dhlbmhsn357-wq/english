@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../../store/useStore';
 import { todayKey } from '../../lib/dateUtils';
+import { ActionIcons } from '../../components/icons';
 import styles from './DayCompleteCard.module.css';
 
 export function DayCompleteCard() {
@@ -15,7 +16,7 @@ export function DayCompleteCard() {
 
   return (
     <div className={styles.card}>
-      <div className={styles.emoji}>🎉</div>
+      <div className={styles.iconWrap}><ActionIcons.trophy size={26} strokeWidth={1.8} /></div>
       <div className={styles.title}>أنهيت خطة اليوم</div>
       <div className={styles.stats}>
         <span>{todaySessions.length} جلسات</span>

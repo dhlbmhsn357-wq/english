@@ -1,6 +1,6 @@
 .card {
-  background: linear-gradient(150deg, rgba(167,139,250,0.09), rgba(45,212,191,0.04));
-  border: 1px solid rgba(167,139,250,0.22);
+  background: linear-gradient(150deg, var(--gold-dim), var(--teal-dim));
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   display: flex;
@@ -8,27 +8,8 @@
   gap: var(--space-3);
 }
 
-.title { font-size: var(--text-sm); font-weight: 800; color: #a78bfa; }
+.title { display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); font-weight: 800; color: var(--primary); }
 
 .topicBox { background: var(--surface-2); border-radius: var(--radius-sm); padding: var(--space-3); }
 .topicLabel { font-size: var(--text-xs); color: var(--text-muted); margin-bottom: 4px; }
 .topicText { font-size: var(--text-base); font-weight: 700; color: var(--text); direction: ltr; text-align: left; line-height: 1.4; }
-
-.startBtn {
-  background: linear-gradient(135deg, #7c3aed, #a78bfa);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  font-weight: 700;
-  font-size: var(--text-sm);
-}
-
-.skipBtn {
-  background: none;
-  border: 1px solid rgba(167,139,250,0.3);
-  color: #a78bfa;
-  border-radius: var(--radius-sm);
-  padding: 9px;
-  font-size: var(--text-xs);
-}

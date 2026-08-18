@@ -19,6 +19,7 @@ export function defaultState(): AppState {
     progressState: { progress: {}, islamicPhase: 1, phaseNotified: {}, topicIndex: 0 },
     vocabulary: { vocab: [] },
     carryoverState: { carryover: [] },
+    library: { customSources: [] },
     sessions: { sessions: [] },
     attendance: { attendance: [], streak: 0, lastActiveDate: null, lastStreakDate: null },
     wins: { wins: [], weeklyWin: '', weeklyWinWeek: null }
@@ -99,10 +100,18 @@ export function migrateState(oldState: unknown): AppState {
   if (typeof old.weeklyWin === 'string') migrated.wins.weeklyWin = old.weeklyWin;
   if (typeof old.weeklyWinWeek === 'string' || old.weeklyWinWeek === null) migrated.wins.weeklyWinWeek = old.weeklyWinWeek as string | null;
 
-  if (old.theme) migrated.userSettings.theme = old.theme as AppState['userSettings']['theme'];
+  // ثيمات V5 القديمة (رملي/سماوي/أخضر/وردي) بقت غير مدعومة — أي قيمة غير
+  // Light/Dark/System بترجع لـ dark الافتراضي بدل ما تكسر الواجهة.
+  const VALID_THEMES = ['dark', 'light', 'system'];
+  if (old.theme && VALID_THEMES.includes(old.theme as string)) {
+    migrated.userSettings.theme = old.theme as AppState['userSettings']['theme'];
+  }
   if (old.font) migrated.userSettings.font = old.font as AppState['userSettings']['font'];
   if (typeof old.fontSize === 'number') migrated.userSettings.fontSize = old.fontSize;
-  if (old.bg) migrated.userSettings.bg = old.bg as AppState['userSettings']['bg'];
+  const VALID_BG = ['none', 'custom'];
+  if (old.bg && VALID_BG.includes(old.bg as string)) {
+    migrated.userSettings.bg = old.bg as AppState['userSettings']['bg'];
+  }
   if (typeof old.bgOpacity === 'number') migrated.userSettings.bgOpacity = old.bgOpacity;
   if (old.customBg !== undefined) migrated.userSettings.customBg = old.customBg as string | null;
   if (Array.isArray(old.notifTimes)) migrated.userSettings.notifTimes = old.notifTimes as string[];
@@ -124,6 +133,7 @@ function mergeDomains(base: AppState, partial: Partial<AppState>): AppState {
     progressState: { ...base.progressState, ...partial.progressState },
     vocabulary: { ...base.vocabulary, ...partial.vocabulary },
     carryoverState: { ...base.carryoverState, ...partial.carryoverState },
+    library: { ...base.library, ...partial.library },
     sessions: { ...base.sessions, ...partial.sessions },
     attendance: { ...base.attendance, ...partial.attendance },
     wins: { ...base.wins, ...partial.wins }
