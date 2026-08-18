@@ -3,6 +3,8 @@ import { useStore } from '../../store/useStore';
 import { VocabCapture } from './VocabCapture';
 import { VocabStats } from './VocabStats';
 import { VocabReviewSheet } from './VocabReviewSheet';
+import { ContentTypeIcons, ActionIcons } from '../../components/icons';
+import { Button } from '../../components/ui/Button';
 import styles from './VocabularyCard.module.css';
 
 export function VocabularyCard() {
@@ -20,7 +22,7 @@ export function VocabularyCard() {
   return (
     <div className={styles.card}>
       <div className={styles.headerRow}>
-        <span className={styles.title}>📝 كلمات الأسبوع</span>
+        <span className={styles.title}><ContentTypeIcons.vocabulary size={15} strokeWidth={2} /> كلمات الأسبوع</span>
         <span className={styles.count}>{vocab.length} كلمة</span>
       </div>
 
@@ -28,12 +30,10 @@ export function VocabularyCard() {
       <VocabStats />
 
       <div className={styles.actionsRow}>
-        <button className={styles.primaryAction} disabled={dueCount === 0} onClick={() => openReview('due')}>
-          🧠 راجع المستحقة {dueCount > 0 ? `(${dueCount})` : ''}
-        </button>
-        <button className={styles.secondaryAction} onClick={() => openReview('all')}>
-          📖 راجع الكل
-        </button>
+        <Button variant="secondary" size="sm" icon={ActionIcons.book} disabled={dueCount === 0} onClick={() => openReview('due')} full>
+          راجع المستحقة {dueCount > 0 ? `(${dueCount})` : ''}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => openReview('all')} full>راجع الكل</Button>
       </div>
 
       <VocabReviewSheet open={reviewOpen} onClose={() => setReviewOpen(false)} mode={reviewMode} />

@@ -3,6 +3,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { useStore } from '../../store/useStore';
 import { SOURCES_MAP, DURATIONS, TOTALS } from '../../lib/staticData';
 import { buildYtUrl } from '../../lib/utils';
+import { ActionIcons, DifficultyIcons } from '../../components/icons';
 import type { Difficulty } from '../../types';
 import styles from './SessionSheet.module.css';
 
@@ -71,12 +72,12 @@ export function SessionSheet() {
           </div>
 
           {savedStop?.time && (
-            <div className={styles.lastStop}>📍 آخر مكان توقفت فيه: {savedStop.time}</div>
+            <div className={styles.lastStop}><ActionIcons.carryover size={13} strokeWidth={2} /> آخر مكان توقفت فيه: {savedStop.time}</div>
           )}
 
           {openUrl ? (
             <a className={styles.openBtn} href={openUrl} target="_blank" rel="noopener noreferrer">
-              ▶ افتح المصدر
+              <ActionIcons.start size={15} strokeWidth={2} /> افتح المصدر
             </a>
           ) : (
             <div className={styles.noUrl}>مفيش رابط متاح لهذا المصدر</div>
@@ -94,8 +95,12 @@ export function SessionSheet() {
           <div className={styles.qBlock}>
             <div className={styles.qLabel}>هل أنهيت الحلقة؟</div>
             <div className={styles.twoBtn}>
-              <button className={finishedEpisode === true ? styles.selectedYes : styles.optBtn} onClick={() => setFinishedEpisode(true)}>✅ آه خلصتها</button>
-              <button className={finishedEpisode === false ? styles.selectedNo : styles.optBtn} onClick={() => setFinishedEpisode(false)}>⏸ لسه</button>
+              <button className={finishedEpisode === true ? styles.selectedYes : styles.optBtn} onClick={() => setFinishedEpisode(true)}>
+                <ActionIcons.complete size={15} strokeWidth={2.2} /> آه خلصتها
+              </button>
+              <button className={finishedEpisode === false ? styles.selectedNo : styles.optBtn} onClick={() => setFinishedEpisode(false)}>
+                <ActionIcons.carryover size={15} strokeWidth={2} /> لسه
+              </button>
             </div>
           </div>
 
@@ -133,9 +138,15 @@ export function SessionSheet() {
           <div className={styles.qBlock}>
             <div className={styles.qLabel}>صعوبة الجلسة</div>
             <div className={styles.diffRow}>
-              <button className={difficulty === 'easy' ? styles.diffSelectedEasy : styles.diffBtn} onClick={() => setDifficulty('easy')}>😊 سهلة</button>
-              <button className={difficulty === 'mid' ? styles.diffSelectedMid : styles.diffBtn} onClick={() => setDifficulty('mid')}>🤔 متوسطة</button>
-              <button className={difficulty === 'hard' ? styles.diffSelectedHard : styles.diffBtn} onClick={() => setDifficulty('hard')}>😓 صعبة</button>
+              <button className={difficulty === 'easy' ? styles.diffSelectedEasy : styles.diffBtn} onClick={() => setDifficulty('easy')}>
+                <DifficultyIcons.easy size={16} strokeWidth={1.8} /> سهلة
+              </button>
+              <button className={difficulty === 'mid' ? styles.diffSelectedMid : styles.diffBtn} onClick={() => setDifficulty('mid')}>
+                <DifficultyIcons.mid size={16} strokeWidth={1.8} /> متوسطة
+              </button>
+              <button className={difficulty === 'hard' ? styles.diffSelectedHard : styles.diffBtn} onClick={() => setDifficulty('hard')}>
+                <DifficultyIcons.hard size={16} strokeWidth={1.8} /> صعبة
+              </button>
             </div>
           </div>
 

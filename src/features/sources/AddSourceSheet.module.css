@@ -1,3 +1,18 @@
+.stepper { display: flex; justify-content: space-between; margin-bottom: var(--space-6); padding: 0 4px; }
+.stepDotWrap { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+.stepDot {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 700;
+}
+.stepDotActive { background: var(--primary); border-color: var(--primary); color: #fff; }
+.stepLabel { font-size: 10px; color: var(--text-faint); }
+
 .section { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-5); }
 .sectionLabel { font-size: var(--text-xs); color: var(--text-muted); font-weight: 700; }
 .hint { font-size: var(--text-xs); color: var(--text-faint); }
@@ -33,5 +48,19 @@
 .chipActive { border-color: var(--primary); color: var(--primary); background: var(--gold-dim); }
 
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+
+.priorityGrid { display: flex; flex-direction: column; gap: 8px; }
+.priorityBtn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  text-align: start;
+}
+.priorityActive { border-color: var(--primary); background: var(--gold-dim); }
+.priorityLabel { font-size: var(--text-sm); font-weight: 700; color: var(--text); }
+.priorityActive .priorityLabel { color: var(--primary); }
+.priorityHint { font-size: var(--text-xs); color: var(--text-muted); }
 
 .footer { display: flex; gap: var(--space-2); margin-top: var(--space-2); }

@@ -1,24 +1,27 @@
-.emoji { font-size: 52px; margin-bottom: var(--space-3); }
-.title { font-size: var(--text-lg); font-weight: 900; color: var(--gold); margin-bottom: var(--space-2); font-family: var(--font-heading); }
-.subtitle { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: var(--space-5); }
+.iconWrap {
+  display: flex; align-items: center; justify-content: center;
+  width: 68px; height: 68px;
+  margin: 0 auto var(--space-4);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(150deg, var(--gold-dim), var(--teal-dim));
+  color: var(--primary);
+  animation: popIn 420ms var(--ease-out) both;
+}
+@keyframes popIn {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.title { font-size: var(--text-lg); font-weight: 900; color: var(--text); margin-bottom: var(--space-2); font-family: var(--font-heading); text-align: center; }
+.subtitle { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: var(--space-4); text-align: center; }
+
+.statsRow { display: flex; justify-content: center; gap: var(--space-6); margin-bottom: var(--space-5); }
+.stat { text-align: center; }
+.statNum { font-size: var(--text-xl); font-weight: 900; color: var(--primary); font-family: var(--font-heading); }
+.statLabel { font-size: var(--text-xs); color: var(--text-muted); }
+
+.nextBox { background: var(--surface-2); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-4); text-align: center; }
+.nextLabel { font-size: var(--text-sm); font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.nextSources { font-size: var(--text-xs); color: var(--text-muted); }
 
 .btnRow { display: flex; gap: var(--space-2); }
-.confirmBtn {
-  flex: 1;
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
-  color: #0f1923;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  font-weight: 800;
-  font-size: var(--text-sm);
-}
-.laterBtn {
-  flex: 1;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  font-size: var(--text-sm);
-}

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { ActionIcons } from '../../components/icons';
+import { Button } from '../../components/ui/Button';
 import styles from './WeeklyWinCard.module.css';
 
 export function WeeklyWinCard() {
@@ -16,18 +18,18 @@ export function WeeklyWinCard() {
 
   return (
     <div className={styles.card}>
-      <div className={styles.title}>🏆 إيه أحسن حاجة تعلمتها؟</div>
+      <div className={styles.title}><ActionIcons.trophy size={15} strokeWidth={2} /> إيه أحسن حاجة تعلمتها؟</div>
       <textarea
         className={styles.textarea}
         placeholder="مثلاً: فهمت محاضرة كاملة بدون ترجمة..."
         value={text}
         onChange={e => setText(e.target.value)}
       />
-      <button className={styles.saveBtn} onClick={() => saveWin(text)}>احفظ ✨</button>
+      <Button variant="primary" size="sm" full onClick={() => saveWin(text)}>احفظ</Button>
 
       {history.length > 0 && (
         <div className={styles.history}>
-          <div className={styles.historyLabel}>📚 مكاسب سابقة</div>
+          <div className={styles.historyLabel}><ActionIcons.book size={13} strokeWidth={2} /> مكاسب سابقة</div>
           {history.map((w, i) => (
             <div key={i} className={styles.historyItem}>
               <div className={styles.historyText}>{w.text}</div>

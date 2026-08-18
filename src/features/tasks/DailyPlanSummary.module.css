@@ -4,6 +4,7 @@
   flex-wrap: wrap;
 }
 .item, .itemWarn {
+  display: flex; align-items: center; gap: 5px;
   font-size: var(--text-xs);
   color: var(--text-muted);
   background: var(--surface-2);
@@ -11,4 +12,4 @@
   border-radius: var(--radius-pill);
   padding: 5px 12px;
 }
-.itemWarn { color: var(--orange); border-color: rgba(251,146,60,0.3); }
+.itemWarn { color: var(--warning); border-color: rgba(245,158,11,0.3); }

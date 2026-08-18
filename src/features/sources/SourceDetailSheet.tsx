@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { ContentTypeIcons, ActionIcons } from '../../components/icons';
+import { MilestoneTimeline } from '../progress/MilestoneTimeline';
 import { useStore } from '../../store/useStore';
 import { CUSTOM_STATE_LABELS, CONTENT_TYPE_LABEL, TRACKING_LABEL } from './sourceState';
 import type { LearningSource, CustomSourceStatus } from '../../types';
@@ -53,6 +54,20 @@ export function SourceDetailSheet({ source, onClose }: SourceDetailSheetProps) {
         </div>
       </div>
 
+      {source.status === 'completed' && (
+        <div className={styles.celebrationBanner}>
+          <ActionIcons.award size={22} strokeWidth={1.8} />
+          <div>
+            <div className={styles.celebrationTitle}>أكملت المصدر</div>
+            <div className={styles.celebrationMeta}>
+              {total ? `${total} ${TRACKING_LABEL[source.trackingType]}` : ''}
+              {total && source.updatedAt ? ' • ' : ''}
+              {source.updatedAt ? new Date(source.updatedAt).toLocaleDateString('ar-EG') : ''}
+            </div>
+          </div>
+        </div>
+      )}
+
       {source.trackingType !== 'manual' && (
         <div className={styles.progressSection}>
           <div className={styles.progressRow}>
@@ -65,6 +80,9 @@ export function SourceDetailSheet({ source, onClose }: SourceDetailSheetProps) {
             <div className={styles.unitValue}>{source.completedUnits}</div>
             <button className={styles.stepBtn} onClick={() => step(1)} aria-label="زيادة">+</button>
           </div>
+          {total && total >= 8 && (
+            <MilestoneTimeline done={source.completedUnits} total={total} unitLabel={TRACKING_LABEL[source.trackingType]} />
+          )}
         </div>
       )}
 

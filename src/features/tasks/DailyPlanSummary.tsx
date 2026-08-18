@@ -3,6 +3,7 @@ import { getTasks } from '../../lib/taskEngine';
 import { DURATIONS } from '../../lib/staticData';
 import { formatMinutes } from '../../lib/utils';
 import { todayKey } from '../../lib/dateUtils';
+import { NotesIcon, ActionIcons } from '../../components/icons';
 import styles from './DailyPlanSummary.module.css';
 
 export function DailyPlanSummary() {
@@ -24,9 +25,9 @@ export function DailyPlanSummary() {
 
   return (
     <div className={styles.wrap}>
-      <span className={styles.item}>📋 {remaining.length} {remaining.length === 1 ? 'مهمة' : 'مهام'}</span>
-      {totalMinutes > 0 && <span className={styles.item}>⏱ {formatMinutes(totalMinutes)}</span>}
-      {carryover.length > 0 && <span className={styles.itemWarn}>⏩ {carryover.length} متأخرة</span>}
+      <span className={styles.item}><NotesIcon size={13} strokeWidth={2} /> {remaining.length} {remaining.length === 1 ? 'مهمة' : 'مهام'}</span>
+      {totalMinutes > 0 && <span className={styles.item}><ActionIcons.carryover size={13} strokeWidth={2} /> {formatMinutes(totalMinutes)}</span>}
+      {carryover.length > 0 && <span className={styles.itemWarn}>{carryover.length} متأخرة</span>}
     </div>
   );
 }

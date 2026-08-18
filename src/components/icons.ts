@@ -50,6 +50,14 @@ import {
   Sparkles,
   ShieldAlert,
   Zap,
+  Eye,
+  Smile,
+  Meh,
+  Frown,
+  Award,
+  Flag,
+  PartyPopper,
+  BookMarked,
 } from 'lucide-react';
 
 /** خصائص افتراضية موحدة لكل الأيقونات — نفس الحجم والسُمك دايمًا */
@@ -95,7 +103,14 @@ export const ActionIcons = {
   warning: ShieldAlert,
   busy: Zap,
   free: Moon,
+  reveal: Eye,
+  celebrate: PartyPopper,
+  award: Award,
+  milestone: Flag,
+  book: BookMarked,
 } as const;
+
+export const DifficultyIcons = { easy: Smile, mid: Meh, hard: Frown } as const;
 
 // ---- Connection ----
 export const ConnectionIcons = { online: Wifi, offline: WifiOff } as const;

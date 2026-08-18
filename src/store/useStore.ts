@@ -152,7 +152,7 @@ export const useStore = create<Store>((set, get) => ({
     const s = get();
     const ok = storage.save(STORAGE_KEY, snapshot(s));
     set({ lastSaveOk: ok });
-    if (!ok) get().showToast('⚠️ تعذر حفظ البيانات. قد تكون مساحة التخزين ممتلئة.');
+    if (!ok) get().showToast('تعذر حفظ البيانات. قد تكون مساحة التخزين ممتلئة.');
     return ok;
   },
 
@@ -164,7 +164,7 @@ export const useStore = create<Store>((set, get) => ({
     }));
     get().markAttendanceForToday();
     get().save();
-    get().showToast(mode === 'busy' ? '⚡ مضغوط — الأهم فقط' : '🌙 مفضي — خطة كاملة');
+    get().showToast(mode === 'busy' ? 'مضغوط — الأهم فقط' : 'مفضي — خطة كاملة');
   },
 
   checkAndProcessNewDay: () => {
@@ -254,10 +254,10 @@ export const useStore = create<Store>((set, get) => ({
     set({ activeSession: null });
     get().save();
     if (result.completed) {
-      get().showToast('✅ ممتاز! المهمة خلصت 🎉');
+      get().showToast('ممتاز! المهمة خلصت');
       checkPhaseComplete(get, set);
     } else {
-      get().showToast('📍 اتسجل مكانك. كمّل من هنا المرة الجاية');
+      get().showToast('اتسجل مكانك. كمّل من هنا المرة الجاية');
     }
   },
 
@@ -292,14 +292,14 @@ export const useStore = create<Store>((set, get) => ({
     }
     get().save();
     if (get().tasksState.tasks[taskKey]?.done) {
-      get().showToast('✅ ممتاز! المهمة خلصت 🎉');
+      get().showToast('ممتاز! المهمة خلصت');
       checkPhaseComplete(get, set);
     }
   },
 
   saveStop: (sourceName, episode, url, time) => {
     if (url && !isValidUrlLocal(url)) {
-      get().showToast('❌ الرابط غير صالح');
+      get().showToast('الرابط غير صالح');
       return false;
     }
     const entry: StoppedEntry = { url, time, savedAt: todayKey() };
@@ -309,7 +309,7 @@ export const useStore = create<Store>((set, get) => ({
       return { tasksState: { ...st.tasksState, stopped: { ...st.tasksState.stopped, [sourceName]: map } } };
     });
     get().save();
-    get().showToast('📍 حُفظ! لما ترجع اضغط "افتح من هنا"');
+    get().showToast('حُفظ! لما ترجع اضغط "افتح من هنا"');
     return true;
   },
 
@@ -337,7 +337,7 @@ export const useStore = create<Store>((set, get) => ({
     }
     set(st => ({ carryoverState: { carryover: st.carryoverState.carryover.filter(c => c.id !== carryId) } }));
     get().save();
-    get().showToast('✅ مهمة مترحلة خلصت! 🎉');
+    get().showToast('مهمة مترحلة خلصت!');
   },
 
   dismissCarryover: (carryId) => {
@@ -355,12 +355,12 @@ export const useStore = create<Store>((set, get) => ({
   // ---------------- Progress ----------------
   updateProgress: (sourceName, value) => {
     const total = TOTALS[sourceName] || 0;
-    if (isNaN(value)) { get().showToast('❌ رقم غير صالح'); return false; }
-    if (value < 0) { get().showToast('❌ الرقم لا يمكن أن يكون سالبًا'); return false; }
-    if (value > total) { get().showToast(`❌ العدد أكبر من الإجمالي (${total})`); return false; }
+    if (isNaN(value)) { get().showToast('رقم غير صالح'); return false; }
+    if (value < 0) { get().showToast('الرقم لا يمكن أن يكون سالبًا'); return false; }
+    if (value > total) { get().showToast(`العدد أكبر من الإجمالي (${total})`); return false; }
     set(st => ({ progressState: { ...st.progressState, progress: { ...st.progressState.progress, [sourceName]: value } } }));
     get().save();
-    get().showToast('📊 تم التحديث');
+    get().showToast('تم التحديث');
     checkPhaseComplete(get, set);
     return true;
   },
@@ -369,7 +369,7 @@ export const useStore = create<Store>((set, get) => ({
     set(st => ({ progressState: { ...st.progressState, islamicPhase: Math.min((st.progressState.islamicPhase + 1), 3) as 1 | 2 | 3 } }));
     set(st => ({ phaseModal: { ...st.phaseModal, open: false } }));
     get().save();
-    get().showToast('🚀 انتقلت للمرحلة ' + get().progressState.islamicPhase + '!');
+    get().showToast('انتقلت للمرحلة ' + get().progressState.islamicPhase + '!');
   },
 
   closePhaseModal: () => set(st => ({ phaseModal: { ...st.phaseModal, open: false } })),
@@ -386,7 +386,7 @@ export const useStore = create<Store>((set, get) => ({
     const w: VocabWord = { id: genId(), word, meaning, addedAt: Date.now(), nextReview: Date.now(), reviewCount: 0, difficulty: '', lastReviewedAt: null };
     set(st => ({ vocabulary: { vocab: [...st.vocabulary.vocab, w] } }));
     get().save();
-    get().showToast('✨ أضفت: ' + word);
+    get().showToast('أضفت: ' + word);
   },
 
   removeWord: (id) => {
@@ -418,7 +418,7 @@ export const useStore = create<Store>((set, get) => ({
       }
     }));
     get().save();
-    get().showToast('🏆 محفوظ! كمّل 💪');
+    get().showToast('محفوظ! كمّل بنفس الروح');
   },
 
   refreshWeeklyWinField: () => {
@@ -566,8 +566,8 @@ export const useStore = create<Store>((set, get) => ({
     const migrated = migrateState(result.data);
     set({ ...migrated });
     const saved = get().save();
-    if (saved) get().showToast('✅ تم استيراد البيانات!');
-    else get().showToast('⚠️ استُورد لكن تعذر حفظه');
+    if (saved) get().showToast('تم استيراد البيانات!');
+    else get().showToast('استُورد لكن تعذر حفظه');
     return { ok: true };
   },
 

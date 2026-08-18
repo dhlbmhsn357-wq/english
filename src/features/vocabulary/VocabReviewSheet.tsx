@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { BottomSheet } from '../../components/BottomSheet';
 import { EmptyState } from '../../components/EmptyState';
+import { Button } from '../../components/ui/Button';
+import { ActionIcons, DifficultyIcons } from '../../components/icons';
 import { useStore } from '../../store/useStore';
 import type { Difficulty } from '../../types';
 import styles from './VocabReviewSheet.module.css';
@@ -40,9 +42,9 @@ export function VocabReviewSheet({ open, onClose, mode }: VocabReviewSheetProps)
     return (
       <BottomSheet open={open} onClose={handleClose} title="خلصت المراجعة">
         <div className={styles.finishBox}>
-          <div className={styles.finishIcon}>🎉</div>
+          <div className={styles.finishIcon}><ActionIcons.celebrate size={28} strokeWidth={1.8} /></div>
           <div className={styles.finishText}>سهلة: {results.easy} · متوسطة: {results.mid} · صعبة: {results.hard}</div>
-          <button className={styles.doneBtn} onClick={handleClose}>تمام</button>
+          <Button variant="primary" full onClick={handleClose}>تمام</Button>
         </div>
       </BottomSheet>
     );
@@ -67,15 +69,21 @@ export function VocabReviewSheet({ open, onClose, mode }: VocabReviewSheetProps)
       <div className={styles.reviewBox}>
         <div className={styles.word}>{current.word}</div>
         {!revealed ? (
-          <button className={styles.revealBtn} onClick={() => setRevealed(true)}>👁 اعرض المعنى</button>
+          <Button variant="secondary" icon={ActionIcons.reveal} onClick={() => setRevealed(true)}>اعرض المعنى</Button>
         ) : (
           <div className={styles.meaning}>{current.meaning || '(مفيش معنى مسجّل)'}</div>
         )}
         <div className={styles.diffLabel}>صعوبة الكلمة؟</div>
         <div className={styles.diffRow}>
-          <button className={styles.diffEasy} onClick={() => handleAnswer('easy')}>😊 سهلة</button>
-          <button className={styles.diffMid} onClick={() => handleAnswer('mid')}>🤔 متوسطة</button>
-          <button className={styles.diffHard} onClick={() => handleAnswer('hard')}>😓 صعبة</button>
+          <button className={`${styles.diffBtn} ${styles.diffEasy}`} onClick={() => handleAnswer('easy')}>
+            <DifficultyIcons.easy size={18} strokeWidth={1.8} /> سهلة
+          </button>
+          <button className={`${styles.diffBtn} ${styles.diffMid}`} onClick={() => handleAnswer('mid')}>
+            <DifficultyIcons.mid size={18} strokeWidth={1.8} /> متوسطة
+          </button>
+          <button className={`${styles.diffBtn} ${styles.diffHard}`} onClick={() => handleAnswer('hard')}>
+            <DifficultyIcons.hard size={18} strokeWidth={1.8} /> صعبة
+          </button>
         </div>
       </div>
     </BottomSheet>
