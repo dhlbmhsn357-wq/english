@@ -1,0 +1,26 @@
+.badge {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 500;
+  background: #3a2a10;
+  color: #fed7aa;
+  text-align: center;
+  padding: 6px 10px;
+  font-size: var(--text-xs);
+}
+
+.dotWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+.dotOnline, .dotOffline {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dotOnline { background: var(--green); }
+.dotOffline { background: var(--red); }

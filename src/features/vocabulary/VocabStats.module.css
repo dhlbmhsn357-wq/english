@@ -1,0 +1,13 @@
+.row { display: flex; gap: var(--space-2); }
+.chip {
+  flex: 1;
+  text-align: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+}
+.highlight { border-color: var(--gold); background: var(--gold-dim); }
+.num { font-size: var(--text-lg); font-weight: 900; color: var(--text); }
+.highlight .num { color: var(--gold); }
+.label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }

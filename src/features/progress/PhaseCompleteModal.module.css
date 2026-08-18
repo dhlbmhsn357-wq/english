@@ -1,0 +1,24 @@
+.emoji { font-size: 52px; margin-bottom: var(--space-3); }
+.title { font-size: var(--text-lg); font-weight: 900; color: var(--gold); margin-bottom: var(--space-2); font-family: var(--font-heading); }
+.subtitle { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: var(--space-5); }
+
+.btnRow { display: flex; gap: var(--space-2); }
+.confirmBtn {
+  flex: 1;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  color: #0f1923;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-weight: 800;
+  font-size: var(--text-sm);
+}
+.laterBtn {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-size: var(--text-sm);
+}

@@ -1,0 +1,13 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.box { text-align: center; }
+.num { font-size: var(--text-xl); font-weight: 900; color: var(--gold); font-family: var(--font-heading); }
+.label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }

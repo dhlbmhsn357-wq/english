@@ -1,0 +1,38 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-5) var(--space-5) 0;
+}
+
+.left { display: flex; flex-direction: column; gap: 2px; }
+.greeting { font-size: var(--text-xs); color: var(--text-muted); }
+.appName { font-size: var(--text-xl); font-weight: 900; color: var(--gold); font-family: var(--font-heading); }
+.date { font-size: var(--text-xs); color: var(--text-faint); }
+
+.right { display: flex; align-items: center; gap: 8px; }
+
+.streak {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 800;
+  font-size: var(--text-sm);
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  transition: all var(--motion-base) var(--ease-out);
+}
+.streakActive {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  color: #0f1923;
+  border-color: transparent;
+}
+
+.settingsBtn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  width: 40px;
+  height: 40px;
+  font-size: 17px;
+}
