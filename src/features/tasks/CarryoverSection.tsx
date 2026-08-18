@@ -3,11 +3,12 @@ import { useStore } from '../../store/useStore';
 import { ActionIcons } from '../../components/icons';
 import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
+import { trackingUnitLabel } from '../../lib/planEngine';
 import type { CarryoverItem } from '../../types';
 import styles from './CarryoverSection.module.css';
 
 interface CarryoverSectionProps {
-  onStart: (taskId: string, sourceName: string, episode: number, isCarryover: boolean, carryId: string) => void;
+  onStart: (date: string, itemId: string, isCarryover: boolean, carryId: string) => void;
 }
 
 const VISIBLE_LIMIT = 2;
@@ -40,14 +41,17 @@ export function CarryoverSection({ onStart }: CarryoverSectionProps) {
 }
 
 function CarryoverRow({ item, onStart, onDismiss }: { item: CarryoverItem; onStart: CarryoverSectionProps['onStart']; onDismiss: () => void }) {
+  const remainLabel = item.remainingAmount != null && item.trackingType
+    ? `متبقي ${item.remainingAmount} ${trackingUnitLabel(item.trackingType)}`
+    : `متبقي ${item.remainMinutes} دقيقة`;
   return (
     <div className={styles.row}>
       <div className={styles.info}>
         <div className={styles.source}>{item.sourceName}</div>
-        <div className={styles.meta}>الحلقة {item.episode} • متبقي {item.remainMinutes} دقيقة • من {item.fromDate}</div>
+        <div className={styles.meta}>{remainLabel} • من {item.fromDate}</div>
       </div>
       <div className={styles.actions}>
-        <Button variant="secondary" size="sm" onClick={() => onStart(item.originalTaskId, item.sourceName, item.episode, true, item.id)}>
+        <Button variant="secondary" size="sm" onClick={() => onStart(item.fromDate, item.originalTaskId, true, item.id)}>
           أكمل الآن
         </Button>
         <IconButton icon={ActionIcons.close} size="sm" label="اعتبر هذه المهمة ملغاة" onClick={onDismiss} />

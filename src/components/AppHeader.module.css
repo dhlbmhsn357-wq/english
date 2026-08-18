@@ -7,7 +7,17 @@
 
 .left { display: flex; flex-direction: column; gap: 2px; }
 .greeting { font-size: var(--text-xs); color: var(--text-muted); }
-.appName { font-size: var(--text-xl); font-weight: 900; color: var(--gold); font-family: var(--font-heading); }
+.appName {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'Fraunces', var(--font-heading);
+  letter-spacing: 0.2px;
+  direction: ltr;
+  background: linear-gradient(120deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .date { font-size: var(--text-xs); color: var(--text-faint); }
 
 .right { display: flex; align-items: center; gap: 8px; }

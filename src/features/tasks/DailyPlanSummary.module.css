@@ -1,8 +1,5 @@
-.wrap {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
+.wrap { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .item, .itemWarn {
   display: flex; align-items: center; gap: 5px;
   font-size: var(--text-xs);
@@ -13,3 +10,9 @@
   padding: 5px 12px;
 }
 .itemWarn { color: var(--warning); border-color: rgba(245,158,11,0.3); }
+
+.capacityTrack { height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.capacityFill { height: 100%; background: var(--secondary); border-radius: 3px; transition: width var(--motion-slow) var(--ease-out); }
+.capacityOver { background: var(--warning); }
+.capacityText { font-size: 11px; color: var(--text-faint); }
+.warnText { font-size: 11px; color: var(--warning); font-weight: 700; }

@@ -11,17 +11,18 @@ import { ProgressPage } from './pages/ProgressPage';
 import { SessionSheet } from './features/session/SessionSheet';
 import { PhaseCompleteModal } from './features/progress/PhaseCompleteModal';
 import { SessionSummarySheet } from './features/reader/SessionSummarySheet';
-import { getNextEpisodeNumber } from './lib/taskEngine';
 import './styles/tokens.css';
 import './styles/layout.css';
 
 // PDF.js تقيلة نسبيًا (~1MB) — تتحمّل بس لما المستخدم فعليًا يفتح القارئ
 const PdfReaderPage = lazy(() => import('./features/reader/PdfReaderPage').then(m => ({ default: m.PdfReaderPage })));
+const PlannerPage = lazy(() => import('./features/plan/PlannerPage').then(m => ({ default: m.PlannerPage })));
 
 export default function App() {
   const hydrate = useStore(s => s.hydrate);
   const checkAndProcessNewDay = useStore(s => s.checkAndProcessNewDay);
-  const startSession = useStore(s => s.startSession);
+  const startPlanSession = useStore(s => s.startPlanSession);
+  const startFreeSession = useStore(s => s.startFreeSession);
   const theme = useStore(s => s.userSettings.theme);
   const font = useStore(s => s.userSettings.font);
   const fontSize = useStore(s => s.userSettings.fontSize);
@@ -29,7 +30,6 @@ export default function App() {
   const customBg = useStore(s => s.userSettings.customBg);
   const bgOpacity = useStore(s => s.userSettings.bgOpacity);
   const safeMode = useStore(s => s.safeMode);
-  const progress = useStore(s => s.progressState.progress);
 
   const [page, setPage] = useState<PageKey>('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -74,8 +74,8 @@ export default function App() {
     document.documentElement.style.setProperty('--bg-opacity', String(bgOpacity));
   }, [font, fontSize, bg, customBg, bgOpacity]);
 
-  function handleStartSession(taskId: string, sourceName: string, episode: number, isCarryover: boolean, carryId?: string) {
-    startSession(taskId, sourceName, episode, isCarryover, carryId);
+  function handleStartSession(date: string, itemId: string, isCarryover: boolean, carryId?: string) {
+    startPlanSession(date, itemId, isCarryover, carryId);
   }
 
   if (!hydrated) {
@@ -111,10 +111,7 @@ export default function App() {
       {page === 'library' && (
         <div className="main-column">
           <LibraryPage
-            onContinueSource={(sourceName: string) => {
-              const episode = getNextEpisodeNumber(sourceName, progress);
-              handleStartSession('library', sourceName, episode, false);
-            }}
+            onContinueSource={(sourceName: string) => startFreeSession('static', sourceName, sourceName)}
             onOpenReader={openReader}
           />
         </div>
@@ -122,6 +119,13 @@ export default function App() {
       {page === 'progress' && (
         <div className="main-column">
           <ProgressPage onOpenReader={openReader} />
+        </div>
+      )}
+      {page === 'plan' && (
+        <div className="main-column">
+          <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>جاري التحميل...</div>}>
+            <PlannerPage />
+          </Suspense>
         </div>
       )}
 

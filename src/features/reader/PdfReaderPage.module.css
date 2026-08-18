@@ -48,6 +48,7 @@
 
 .pageWrap {
   position: relative;
+  touch-action: pan-x pan-y; /* بيمنع الـ zoom الافتراضي للمتصفح فيعمل تعارض مع الـ Pinch اليدوي */
   box-shadow: var(--shadow-lg);
   background: #fff;
   border-radius: 2px;

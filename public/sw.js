@@ -1,4 +1,4 @@
-const CACHE_NAME = 'massar-v6-cache-1';
+const CACHE_NAME = 'fluently-cache-1';
 const APP_SHELL = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', event => {

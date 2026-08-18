@@ -1,5 +1,5 @@
 // ============================================================
-// مسار محسن — Core Types
+// Fluently — Core Types
 // ============================================================
 
 export type DailyMode = 'busy' | 'free';
@@ -79,6 +79,11 @@ export interface CarryoverItem {
   type: TaskType;
   meta: string;
   remainingPages?: number; // مخصص لمهام القراءة (بند 19) — اختياري بالكامل
+
+  // ---- Plan Builder integration (بند 48-49) ----
+  planItemId?: string;
+  trackingType?: TrackingType;
+  remainingAmount?: number;
 }
 
 export interface VocabWord {
@@ -254,6 +259,88 @@ export interface WinsState {
 }
 
 // ------------------------------------------------------------
+// Learning Plan Builder — المستخدم بيتحكّم بالكامل في أيامه
+// وساعاته ومحتواه، بدل خطة ثابتة داخل الكود.
+//
+// WeeklyPlanTemplate = "النمط المتكرر" (إيه اللي بيحصل كل سبت مثلاً).
+// DailyPlanInstance = "لقطة" (Snapshot) فعلية ليوم بتاريخ محدد، بتتاخد
+// مرة واحدة من الـ Template وقت أول استخدام لليوم ده، وبعدين تعيش
+// مستقلة — تعديل الـ Template بعد كده ميغيّرش أيام اتاخدت لقطتها
+// بالفعل (بند 37-38).
+// ------------------------------------------------------------
+export type WeekDayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday زي Date.getDay()
+export type DayScheduleMode = 'fixed' | 'duration' | 'rest';
+export type PlanItemStatus = 'pending' | 'done' | 'skipped';
+export type SourceKind = 'static' | 'custom';
+
+export interface LearningWindow {
+  start: string; // "HH:MM"
+  end: string;   // "HH:MM"
+}
+
+export interface PlanItemTemplate {
+  id: string;
+  sourceId: string;       // اسم المصدر الثابت أو LearningSource.id
+  sourceKind: SourceKind;
+  sourceName: string;     // Snapshot لاسم المصدر وقت الإضافة
+  trackingType: TrackingType;
+  targetAmount: number;
+  estimatedMinutes: number;
+  priority: SourcePriority;
+  order: number;
+}
+
+export interface DayTemplate {
+  day: WeekDayIndex;
+  enabled: boolean;
+  mode: DayScheduleMode;
+  windows: LearningWindow[];
+  durationMinutes?: number;
+  items: PlanItemTemplate[];
+}
+
+export interface WeeklyPlanTemplate {
+  id: string;
+  version: number;
+  days: DayTemplate[]; // طول 7 دايمًا، index = WeekDayIndex
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PlanItem {
+  id: string;
+  date: string;
+  sourceId: string;
+  sourceKind: SourceKind;
+  sourceName: string;
+  trackingType: TrackingType;
+  targetAmount: number;
+  completedAmount: number;
+  estimatedMinutes: number;
+  order: number;
+  status: PlanItemStatus;
+  priority: SourcePriority;
+  parentItemId?: string; // لو ناتج من Split
+  templateItemId?: string; // مرجع لعنصر الـ Template الأصلي (لو موجود)
+}
+
+export interface DailyPlanInstance {
+  date: string; // مفتاح فريد
+  templateVersion: number;
+  mode: DayScheduleMode;
+  windows: LearningWindow[];
+  durationMinutes?: number;
+  availableMinutes: number;
+  items: PlanItem[];
+  createdAt: number;
+}
+
+export interface PlanState {
+  template: WeeklyPlanTemplate;
+  instances: Record<string, DailyPlanInstance>; // date -> instance
+}
+
+// ------------------------------------------------------------
 // الحالة الكاملة (للحفظ والاستيراد/التصدير فقط — الـ store الفعلي
 // مقسم لـ slices منفصلة زي ما بند 28 طلب)
 // ------------------------------------------------------------
@@ -269,4 +356,5 @@ export interface AppState {
   sessions: SessionsState;
   attendance: AttendanceState;
   wins: WinsState;
+  plan: PlanState;
 }

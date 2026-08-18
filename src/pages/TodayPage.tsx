@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { DailyModeSelector } from '../features/tasks/DailyModeSelector';
 import { NextActionCard } from '../features/tasks/NextActionCard';
@@ -9,30 +9,41 @@ import { DayCompleteCard } from '../features/tasks/DayCompleteCard';
 import { SpeakingChallengeCard } from '../features/session/SpeakingChallengeCard';
 import { VocabularyCard } from '../features/vocabulary/VocabularyCard';
 import { WeeklyWinCard } from '../features/review/WeeklyWinCard';
-import { getTasks } from '../lib/taskEngine';
 import { todayKey } from '../lib/dateUtils';
 import styles from './TodayPage.module.css';
 
 interface TodayPageProps {
-  onStartSession: (taskId: string, sourceName: string, episode: number, isCarryover: boolean, carryId?: string) => void;
+  onStartSession: (date: string, itemId: string, isCarryover: boolean, carryId?: string) => void;
 }
 
+/**
+ * بند 41-42 — الصفحة دي مبنتبنيش Tasks من Hardcoded Logic. بتقرأ
+ * DailyPlanInstance بتاع النهاردة (لقطة اتاخدت من WeeklyPlanTemplate)
+ * وتعرض المهام اللي المستخدم نفسه اختارها.
+ */
 export function TodayPage({ onStartSession }: TodayPageProps) {
   const dailyModes = useStore(s => s.dailyPlan.dailyModes);
-  const tasksState = useStore(s => s.tasksState.tasks);
   const carryover = useStore(s => s.carryoverState.carryover);
-  const islamicPhase = useStore(s => s.progressState.islamicPhase);
-  const progress = useStore(s => s.progressState.progress);
+  const instance = useStore(s => s.plan.instances[todayKey()]);
+  const ensureDailyInstance = useStore(s => s.ensureDailyInstance);
 
   const t = todayKey();
-  const mode = dailyModes[t] || null;
+  const dailyMode = dailyModes[t] || null;
 
-  const tasks = useMemo(
-    () => (mode ? getTasks(mode, t, islamicPhase, progress) : []),
-    [mode, t, islamicPhase, progress]
-  );
+  useEffect(() => {
+    if (!instance) ensureDailyInstance(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, instance]);
 
-  const allDone = mode && tasks.length > 0 && tasks.every(task => (tasksState[t + '_' + task.id] || {}).done) && carryover.length === 0;
+  // بند 46-47 — Busy/Free بقى فلتر أولوية على نفس الخطة، مش مجموعة مهام تانية
+  const visibleItems = useMemo(() => {
+    if (!instance) return [];
+    const pending = instance.items.filter(i => i.status !== 'skipped');
+    if (dailyMode === 'busy') return pending.filter(i => i.priority === 'primary');
+    return pending;
+  }, [instance, dailyMode]);
+
+  const allDone = !!dailyMode && visibleItems.length > 0 && visibleItems.every(i => i.status === 'done') && carryover.length === 0;
 
   return (
     <>
@@ -40,25 +51,23 @@ export function TodayPage({ onStartSession }: TodayPageProps) {
         <div className={styles.stack}>
           <DailyModeSelector />
 
-          {mode && <DailyPlanSummary />}
+          {dailyMode && instance && <DailyPlanSummary instance={instance} visibleItems={visibleItems} />}
 
           <CarryoverSection onStart={onStartSession} />
 
-          <NextActionCard onStart={onStartSession} />
+          <NextActionCard visibleItems={visibleItems} onStart={onStartSession} />
 
           {allDone && <DayCompleteCard />}
 
-          {mode && tasks.length > 0 && (
+          {dailyMode && visibleItems.length > 0 && (
             <div className={styles.tasksBlock}>
               <div className={styles.sectionLabel}>مهام النهارده</div>
               <div className={styles.tasksList}>
-                {tasks.map(task => (
+                {visibleItems.map(item => (
                   <TaskCard
-                    key={task.id}
-                    task={task}
-                    taskKey={`${t}_${task.id}`}
-                    isDone={!!(tasksState[t + '_' + task.id] || {}).done}
-                    onStart={() => onStartSession(task.id, task.name, (progress[task.name] || 0) + 1, false)}
+                    key={item.id}
+                    item={item}
+                    onStart={() => onStartSession(t, item.id, false)}
                   />
                 ))}
               </div>
@@ -83,4 +92,3 @@ export function TodayPage({ onStartSession }: TodayPageProps) {
     </>
   );
 }
-

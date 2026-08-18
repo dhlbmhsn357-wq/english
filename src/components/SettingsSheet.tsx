@@ -49,13 +49,13 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
     // (بتفضل محفوظة محليًا في IndexedDB بس — أكبر من ما ينفع يتحط في JSON واحد)
     const pdfMeta = await exportPdfMetadata();
     const payload = {
-      app: 'Massar Mohsen', schemaVersion: data.schemaVersion, exportedAt: new Date().toISOString(),
+      app: 'Fluently', schemaVersion: data.schemaVersion, exportedAt: new Date().toISOString(),
       data, pdfHighlights: pdfMeta.highlights, pdfNotes: pdfMeta.notes, pdfFilesInfo: pdfMeta.files
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'massar_mohsen_backup.json'; a.click();
+    a.href = url; a.download = 'fluently_backup.json'; a.click();
     URL.revokeObjectURL(url);
     showToast(pdfMeta.files.length > 0 ? 'تم تصدير البيانات (ملفات الـ PDF نفسها لازم ترفعها تاني بعد الاستيراد)' : 'تم تصدير البيانات');
   }

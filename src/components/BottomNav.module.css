@@ -6,8 +6,8 @@
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
   display: flex;
-  justify-content: space-around;
-  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  justify-content: space-between;
+  padding: 8px 6px max(8px, env(safe-area-inset-bottom));
   z-index: 100;
   max-width: var(--content-max-width);
   margin: 0 auto;
@@ -28,7 +28,8 @@
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  padding: 6px 22px;
+  flex: 1;
+  padding: 6px 4px;
   border-radius: var(--radius-sm);
   transition: color var(--motion-fast) var(--ease-out);
 }

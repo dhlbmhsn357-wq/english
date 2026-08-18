@@ -1,0 +1,61 @@
+.section { margin-bottom: var(--space-5); }
+.sectionLabel { font-size: var(--text-xs); color: var(--text-muted); font-weight: 700; margin-bottom: var(--space-2); }
+
+.modeGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.modeBtn {
+  padding: 12px 6px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+.modeActive { border-color: var(--primary); color: var(--primary); background: var(--gold-dim); }
+
+.windowRow { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 8px; }
+.timeInput {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: center;
+  direction: ltr;
+}
+.arrow { color: var(--text-faint); flex-shrink: 0; }
+.removeWindowBtn { flex-shrink: 0; color: var(--danger); background: none; border: none; padding: 6px; }
+.addWindowBtn { font-size: var(--text-xs); color: var(--primary); background: none; border: none; padding: 6px 0; font-weight: 700; }
+
+.itemsList { display: flex; flex-direction: column; gap: 8px; }
+.itemRow {
+  display: flex; align-items: center; gap: var(--space-2);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.itemBody { flex: 1; min-width: 0; }
+.itemName { font-size: var(--text-sm); font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itemMeta { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+.priorityPill {
+  flex-shrink: 0;
+  font-size: 10px; font-weight: 700;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  border: none;
+}
+.priorityPrimary { background: var(--gold-dim); color: var(--primary); }
+.priorityDanger { background: none; color: var(--danger); border: none; padding: 6px; flex-shrink: 0; }
+
+.emptyHint { text-align: center; color: var(--text-faint); font-size: var(--text-sm); padding: var(--space-5) 0; }
+
+.capacityRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.capacityLabel { font-size: var(--text-xs); color: var(--text-muted); }
+.capacityValue { font-size: var(--text-xs); font-weight: 700; color: var(--text); }
+.capacityTrack { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.capacityFill { height: 100%; background: var(--secondary); border-radius: 3px; }
+.capacityOver { background: var(--warning); }

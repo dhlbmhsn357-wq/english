@@ -1,7 +1,7 @@
 import { NavIcons, ICON_STROKE } from './icons';
 import styles from './BottomNav.module.css';
 
-export type PageKey = 'today' | 'library' | 'progress';
+export type PageKey = 'today' | 'library' | 'plan' | 'progress';
 
 interface BottomNavProps {
   active: PageKey;
@@ -11,6 +11,7 @@ interface BottomNavProps {
 const NAV_ITEMS: { key: PageKey; icon: keyof typeof NavIcons; label: string }[] = [
   { key: 'today', icon: 'today', label: 'اليوم' },
   { key: 'library', icon: 'library', label: 'المكتبة' },
+  { key: 'plan', icon: 'plan', label: 'الخطة' },
   { key: 'progress', icon: 'progress', label: 'التقدم' }
 ];
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useStore } from '../../store/useStore';
 import { SOURCES_MAP, DURATIONS, TOTALS } from '../../lib/staticData';
+import { trackingUnitLabel } from '../../lib/planEngine';
 import { buildYtUrl } from '../../lib/utils';
 import { ActionIcons, DifficultyIcons } from '../../components/icons';
 import type { Difficulty } from '../../types';
@@ -38,12 +39,14 @@ export function SessionSheet() {
 
   if (!activeSession) return <BottomSheet open={false} onClose={handleClose}><div /></BottomSheet>;
 
-  const { sourceName, episode } = activeSession;
-  const defaultUrl = SOURCES_MAP[sourceName] || null;
-  const savedStop = tasksStopped[sourceName]?.[String(episode)];
+  const { sourceName, episodeNumber, sourceKind, trackingType, targetAmount } = activeSession;
+  const isStatic = sourceKind === 'static';
+  const defaultUrl = isStatic ? (SOURCES_MAP[sourceName] || null) : null;
+  const savedStop = isStatic ? tasksStopped[sourceName]?.[String(episodeNumber)] : undefined;
   const openUrl = savedStop?.url ? buildYtUrl(savedStop.url, savedStop.time) : defaultUrl;
-  const total = TOTALS[sourceName];
-  const duration = DURATIONS[sourceName];
+  const total = isStatic ? TOTALS[sourceName] : null;
+  const duration = isStatic ? DURATIONS[sourceName] : null;
+  const amountLabel = `${targetAmount} ${trackingUnitLabel(trackingType)}`;
 
   function handleFinishSession() {
     setStep('wrapup');
@@ -67,7 +70,11 @@ export function SessionSheet() {
       {step === 'session' && (
         <div className={styles.sessionBody}>
           <div className={styles.metaRow}>
-            {total && <span className={styles.chip}>الحلقة {episode} من {total}</span>}
+            {isStatic && total ? (
+              <span className={styles.chip}>الحلقة {episodeNumber} من {total}</span>
+            ) : (
+              <span className={styles.chip}>{amountLabel}</span>
+            )}
             {duration && <span className={styles.chip}>{duration} دقيقة</span>}
           </div>
 
@@ -79,7 +86,7 @@ export function SessionSheet() {
             <a className={styles.openBtn} href={openUrl} target="_blank" rel="noopener noreferrer">
               <ActionIcons.start size={15} strokeWidth={2} /> افتح المصدر
             </a>
-          ) : (
+          ) : !isStatic ? null : (
             <div className={styles.noUrl}>مفيش رابط متاح لهذا المصدر</div>
           )}
 
@@ -104,7 +111,7 @@ export function SessionSheet() {
             </div>
           </div>
 
-          {finishedEpisode === false && (
+          {finishedEpisode === false && isStatic && (
             <div className={styles.qBlock}>
               <div className={styles.qLabel}>أين توقفت؟ (دقيقة:ثانية)</div>
               <input

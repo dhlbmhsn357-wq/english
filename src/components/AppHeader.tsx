@@ -17,7 +17,7 @@ export function AppHeader({ onOpenSettings }: AppHeaderProps) {
     <header className={styles.header}>
       <div className={styles.left}>
         <div className={styles.greeting}>{greetingForNow()}</div>
-        <div className={styles.appName}>مسار محسن</div>
+        <div className={styles.appName}>Fluently</div>
         <div className={styles.date}>{formatArabicDate()}</div>
       </div>
       <div className={styles.right}>

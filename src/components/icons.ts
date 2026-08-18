@@ -72,6 +72,13 @@ import {
   FileType,
   Loader2,
   WifiOff as OfflineIcon,
+  StretchHorizontal,
+  CalendarDays,
+  Sunrise,
+  MoveRight,
+  Split,
+  GripVertical,
+  ChevronUp,
 } from 'lucide-react';
 
 /** خصائص افتراضية موحدة لكل الأيقونات — نفس الحجم والسُمك دايمًا */
@@ -82,8 +89,19 @@ export const ICON_STROKE = 1.8;
 export const NavIcons = {
   today: Home,
   library: Library,
+  plan: CalendarDays,
   progress: BarChart3,
   review: RotateCcw,
+} as const;
+
+// ---- Plan Builder ----
+export const PlanIcons = {
+  rest: Sunrise,
+  move: MoveRight,
+  split: Split,
+  dragHandle: GripVertical,
+  moveUp: ChevronUp,
+  moveDown: ChevronDown,
 } as const;
 
 // ---- Actions عامة ----
@@ -157,6 +175,7 @@ export const ReaderIcons = {
   copy: Copy,
   zoomIn: ZoomIn,
   zoomOut: ZoomOut,
+  fitWidth: StretchHorizontal,
   fullscreen: Maximize,
   exitFullscreen: Minimize,
   toc: ListTree,

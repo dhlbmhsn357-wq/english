@@ -4,16 +4,17 @@
 // ============================================================
 import { create } from 'zustand';
 import type {
-  AppState, DailyMode, StoppedEntry, CarryoverItem,
+  AppState, DailyMode, CarryoverItem,
   VocabWord, WeeklyWinEntry, LearningSession, Difficulty, Theme, FontFamily, BgStyle,
-  LearningSource, CustomSourceStatus
+  LearningSource, CustomSourceStatus,
+  WeekDayIndex, DayTemplate, PlanItem, PlanItemTemplate, DailyPlanInstance, TrackingType, SourceKind, SourcePriority
 } from '../types';
 import { storage, STORAGE_KEY, LEGACY_KEY_V5, LEGACY_KEY_V4 } from '../lib/storage';
 import { defaultState, migrateState } from '../lib/migration';
 import { todayKey, yesterdayKey, getWeekStartKey } from '../lib/dateUtils';
-import { getTasks, getNextEpisodeNumber, getCurrentZadSubject } from '../lib/taskEngine';
-import { TOTALS, PHASE_SOURCES, DURATIONS } from '../lib/staticData';
-import { genId, timeToMins } from '../lib/utils';
+import { PHASE_SOURCES, TOTALS } from '../lib/staticData';
+import { materializeInstance } from '../lib/planEngine';
+import { genId } from '../lib/utils';
 
 interface ActiveReadingSession {
   sourceId: string;
@@ -25,11 +26,24 @@ interface ActiveReadingSession {
   notesAdded: number;
 }
 
+interface ActiveSession {
+  date: string | null;        // تاريخ اليوم في الخطة، أو null لمتابعة حرة من المكتبة
+  itemId: string | null;      // PlanItem.id، أو null لمتابعة حرة
+  sourceId: string;
+  sourceKind: SourceKind;
+  sourceName: string;
+  trackingType: TrackingType;
+  targetAmount: number;
+  episodeNumber: number | null; // للعرض + حساب stopped-position (مصادر ثابتة)
+  isCarryover: boolean;
+  carryId?: string;
+}
+
 interface UIState {
   lastSaveOk: boolean;
   safeMode: boolean; // لو حصل init error، بنشتغل بحالة آمنة من غير مسح بيانات
   toast: { msg: string; key: number } | null;
-  activeSession: { taskId: string; sourceName: string; episode: number; isCarryover: boolean; carryId?: string } | null;
+  activeSession: ActiveSession | null;
   phaseModal: { open: boolean; phase: number; allComplete: boolean };
   activeReadingSession: ActiveReadingSession | null;
   lastReadingSummary: LearningSession | null;
@@ -44,8 +58,9 @@ interface Store extends AppState, UIState {
   setMode: (mode: DailyMode) => void;
   checkAndProcessNewDay: () => void;
 
-  // ---- tasks / sessions ----
-  startSession: (taskId: string, sourceName: string, episode: number, isCarryover?: boolean, carryId?: string) => void;
+  // ---- plan-driven sessions (بند 41-42، 59) ----
+  startPlanSession: (date: string, itemId: string, isCarryover?: boolean, carryId?: string) => void;
+  startFreeSession: (sourceKind: SourceKind, sourceId: string, sourceName: string) => void;
   endSession: (result: {
     completed: boolean;
     stoppedAt?: string;
@@ -56,14 +71,23 @@ interface Store extends AppState, UIState {
   }) => void;
   cancelSession: () => void;
 
-  toggleDone: (taskKey: string, sourceName?: string) => void;
-  saveStop: (sourceName: string, episode: number, url: string, time: string) => boolean;
-  saveNote: (taskKey: string, note: string) => void;
-
   // ---- carryover ----
-  completeCarryover: (carryId: string) => void;
   dismissCarryover: (carryId: string) => void;
-  postponeCarryover: (carryId: string) => void;
+
+  // ---- plan builder (بند 13-38) ----
+  ensureDailyInstance: (date: string) => DailyPlanInstance;
+  updateDayTemplate: (day: WeekDayIndex, patch: Partial<Pick<DayTemplate, 'enabled' | 'mode' | 'windows' | 'durationMinutes'>>) => void;
+  addTemplateItem: (day: WeekDayIndex, item: Omit<PlanItemTemplate, 'id' | 'order'>) => void;
+  removeTemplateItem: (day: WeekDayIndex, itemId: string) => void;
+  reorderTemplateItems: (day: WeekDayIndex, orderedIds: string[]) => void;
+  updateTemplateItem: (day: WeekDayIndex, itemId: string, patch: Partial<Pick<PlanItemTemplate, 'targetAmount' | 'estimatedMinutes' | 'priority'>>) => void;
+  addInstanceItem: (date: string, item: { sourceId: string; sourceKind: SourceKind; sourceName: string; trackingType: TrackingType; targetAmount: number; estimatedMinutes: number; priority: SourcePriority }) => void;
+  removeInstanceItem: (date: string, itemId: string) => void;
+  reorderInstanceItems: (date: string, orderedIds: string[]) => void;
+  splitInstanceItem: (date: string, itemId: string, parts: number[]) => void;
+  moveInstanceItem: (fromDate: string, itemId: string, toDate: string) => void;
+  skipInstanceItem: (date: string, itemId: string) => void;
+  unskipInstanceItem: (date: string, itemId: string) => void;
 
   // ---- progress ----
   updateProgress: (sourceName: string, value: number) => boolean;
@@ -141,7 +165,8 @@ function snapshot(s: Store): AppState {
     library: s.library,
     sessions: s.sessions,
     attendance: s.attendance,
-    wins: s.wins
+    wins: s.wins,
+    plan: s.plan
   };
 }
 
@@ -212,9 +237,36 @@ export const useStore = create<Store>((set, get) => ({
     get().save();
   },
 
-  // ---------------- Learning Session Flow (بند 3) ----------------
-  startSession: (taskId, sourceName, episode, isCarryover = false, carryId) => {
-    set({ activeSession: { taskId, sourceName, episode, isCarryover, carryId } });
+  // ---------------- Learning Session Flow — مبني على PlanItem بدل Hardcoded Tasks (بند 41-42، 59) ----------------
+  startPlanSession: (date, itemId, isCarryover = false, carryId) => {
+    const instance = get().ensureDailyInstance(date);
+    const item = instance.items.find(i => i.id === itemId);
+    if (!item) { get().showToast('المهمة دي مش موجودة في خطة هذا اليوم'); return; }
+    const episodeNumber = item.sourceKind === 'static' ? (get().progressState.progress[item.sourceName] || 0) + 1 : null;
+    set({
+      activeSession: {
+        date, itemId, sourceId: item.sourceId, sourceKind: item.sourceKind, sourceName: item.sourceName,
+        trackingType: item.trackingType, targetAmount: item.targetAmount, episodeNumber, isCarryover, carryId
+      }
+    });
+  },
+
+  startFreeSession: (sourceKind, sourceId, sourceName) => {
+    const s = get();
+    let trackingType: TrackingType = 'episodes';
+    let episodeNumber: number | null = null;
+    if (sourceKind === 'static') {
+      episodeNumber = (s.progressState.progress[sourceName] || 0) + 1;
+    } else {
+      const src = s.library.customSources.find(x => x.id === sourceId);
+      trackingType = src?.trackingType || 'manual';
+    }
+    set({
+      activeSession: {
+        date: null, itemId: null, sourceId, sourceKind, sourceName,
+        trackingType, targetAmount: 1, episodeNumber, isCarryover: false
+      }
+    });
   },
 
   cancelSession: () => set({ activeSession: null }),
@@ -223,14 +275,13 @@ export const useStore = create<Store>((set, get) => ({
     const s = get();
     const session = s.activeSession;
     if (!session) return;
-    const { taskId, sourceName, episode, isCarryover, carryId } = session;
+    const { date, itemId, sourceId, sourceKind, sourceName, targetAmount, episodeNumber, isCarryover, carryId } = session;
     const t = todayKey();
-    const taskKey = isCarryover ? undefined : `${t}_${taskId}`;
 
-    // 1) سجّل LearningSession (بند 29)
+    // 1) سجّل LearningSession (بند 29، 59)
     const learningSession: LearningSession = {
-      id: genId(), date: t, taskId, sourceId: sourceName, episodeNumber: episode,
-      startedAt: Date.now(), endedAt: Date.now(),
+      id: genId(), date: t, taskId: itemId || 'free', sourceId: sourceKind === 'static' ? sourceName : sourceId,
+      episodeNumber, startedAt: Date.now(), endedAt: Date.now(),
       durationMinutes: result.durationMinutes ?? null,
       completed: result.completed,
       stoppedAt: result.completed ? null : (result.stoppedAt || null),
@@ -238,45 +289,41 @@ export const useStore = create<Store>((set, get) => ({
     };
     set(st => ({ sessions: { sessions: [...st.sessions.sessions, learningSession] } }));
 
-    // 2) تحديث progress لو خلصت الحلقة (مرة واحدة بس، ومفيش تخطي للإجمالي)
-    if (result.completed && TOTALS[sourceName]) {
-      const total = TOTALS[sourceName];
-      set(st => {
-        const before = st.progressState.progress[sourceName] || 0;
-        const after = before < total ? before + 1 : before;
-        return { progressState: { ...st.progressState, progress: { ...st.progressState.progress, [sourceName]: after } } };
-      });
-    }
+    if (result.completed) {
+      // 2) تحديث Source Progress — مستقل عن Plan Completion (بند 58)
+      applySourceProgressDelta(sourceKind, sourceId, sourceName, targetAmount, set, get);
 
-    // 3) تحديث stopped position لو ما خلصتش
-    if (!result.completed && result.stoppedAt) {
+      // 3) تحديث الـ PlanItem نفسه لو الجلسة دي جزء من خطة يوم
+      if (date && itemId) {
+        set(st => {
+          const inst = st.plan.instances[date];
+          if (!inst) return {};
+          return {
+            plan: {
+              ...st.plan,
+              instances: {
+                ...st.plan.instances,
+                [date]: { ...inst, items: inst.items.map(i => (i.id === itemId ? { ...i, status: 'done', completedAmount: i.targetAmount } : i)) }
+              }
+            }
+          };
+        });
+      }
+
+      // 4) لو الجلسة دي كانت بتحسم Carryover — امسحها بعد ما خلصت فعليًا
+      if (isCarryover && carryId) {
+        set(st => ({ carryoverState: { carryover: st.carryoverState.carryover.filter(c => c.id !== carryId) } }));
+      }
+    } else if (result.stoppedAt && sourceKind === 'static') {
+      // 5) موضع التوقف — للمصادر الثابتة بس (نفس آلية "افتح من هنا" القديمة)
       set(st => {
         const map = { ...(st.tasksState.stopped[sourceName] || {}) };
-        map[String(episode)] = { url: '', time: result.stoppedAt!, savedAt: t };
+        map[String(episodeNumber ?? 1)] = { url: '', time: result.stoppedAt!, savedAt: t };
         return { tasksState: { ...st.tasksState, stopped: { ...st.tasksState.stopped, [sourceName]: map } } };
       });
     }
 
-    // 4) احفظ الملاحظة + علّم المهمة كمكتملة لو completed=true
-    if (isCarryover && carryId) {
-      if (result.completed) {
-        const item = s.carryoverState.carryover.find(c => c.id === carryId);
-        if (item) {
-          const key = `${item.fromDate}_${item.originalTaskId}`;
-          set(st => ({ tasksState: { ...st.tasksState, tasks: { ...st.tasksState.tasks, [key]: { ...(st.tasksState.tasks[key] || {}), done: true, note: result.note || '' } } } }));
-        }
-        set(st => ({ carryoverState: { carryover: st.carryoverState.carryover.filter(c => c.id !== carryId) } }));
-      }
-    } else if (taskKey) {
-      set(st => ({
-        tasksState: {
-          ...st.tasksState,
-          tasks: { ...st.tasksState.tasks, [taskKey]: { ...(st.tasksState.tasks[taskKey] || {}), done: result.completed, note: result.note || '', completedEpisode: result.completed } }
-        }
-      }));
-    }
-
-    // 5) كلمة جديدة لو موجودة
+    // 6) كلمة جديدة لو موجودة
     if (result.newWord && result.newWord.word.trim()) {
       get().addWord(result.newWord.word.trim(), result.newWord.meaning.trim());
     }
@@ -291,95 +338,208 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  // ---------------- Simple toggle (للمهام السريعة بدون session كاملة) ----------------
-  toggleDone: (taskKey, sourceName) => {
-    const s = get();
-    const current = s.tasksState.tasks[taskKey] || {};
-    const willBeDone = !current.done;
-    set(st => ({ tasksState: { ...st.tasksState, tasks: { ...st.tasksState.tasks, [taskKey]: { ...current, done: willBeDone } } } }));
-
-    if (sourceName && TOTALS[sourceName]) {
-      const total = TOTALS[sourceName];
-      if (willBeDone && !current.completedEpisode) {
-        set(st => {
-          const before = st.progressState.progress[sourceName] || 0;
-          const after = before < total ? before + 1 : before;
-          return {
-            progressState: { ...st.progressState, progress: { ...st.progressState.progress, [sourceName]: after } },
-            tasksState: { ...st.tasksState, tasks: { ...st.tasksState.tasks, [taskKey]: { ...st.tasksState.tasks[taskKey], completedEpisode: true } } }
-          };
-        });
-      } else if (!willBeDone && current.completedEpisode) {
-        set(st => {
-          const before = st.progressState.progress[sourceName] || 0;
-          const after = before > 0 ? before - 1 : 0;
-          return {
-            progressState: { ...st.progressState, progress: { ...st.progressState.progress, [sourceName]: after } },
-            tasksState: { ...st.tasksState, tasks: { ...st.tasksState.tasks, [taskKey]: { ...st.tasksState.tasks[taskKey], completedEpisode: false } } }
-          };
-        });
-      }
-    }
-    get().save();
-    if (get().tasksState.tasks[taskKey]?.done) {
-      get().showToast('ممتاز! المهمة خلصت');
-      checkPhaseComplete(get, set);
-    }
-  },
-
-  saveStop: (sourceName, episode, url, time) => {
-    if (url && !isValidUrlLocal(url)) {
-      get().showToast('الرابط غير صالح');
-      return false;
-    }
-    const entry: StoppedEntry = { url, time, savedAt: todayKey() };
-    set(st => {
-      const map = { ...(st.tasksState.stopped[sourceName] || {}) };
-      map[String(episode)] = entry;
-      return { tasksState: { ...st.tasksState, stopped: { ...st.tasksState.stopped, [sourceName]: map } } };
-    });
-    get().save();
-    get().showToast('حُفظ! لما ترجع اضغط "افتح من هنا"');
-    return true;
-  },
-
-  saveNote: (taskKey, note) => {
-    set(st => ({ tasksState: { ...st.tasksState, tasks: { ...st.tasksState.tasks, [taskKey]: { ...(st.tasksState.tasks[taskKey] || {}), note } } } }));
-    get().save();
-  },
-
   // ---------------- Carryover ----------------
-  completeCarryover: (carryId) => {
-    const s = get();
-    const item = s.carryoverState.carryover.find(c => c.id === carryId);
-    if (!item) return;
-    const key = `${item.fromDate}_${item.originalTaskId}`;
-    set(st => ({
-      tasksState: { ...st.tasksState, tasks: { ...st.tasksState.tasks, [key]: { ...(st.tasksState.tasks[key] || {}), done: true, completedEpisode: true } } }
-    }));
-    if (TOTALS[item.sourceName]) {
-      const total = TOTALS[item.sourceName];
-      set(st => {
-        const before = st.progressState.progress[item.sourceName] || 0;
-        const after = before < total ? before + 1 : before;
-        return { progressState: { ...st.progressState, progress: { ...st.progressState.progress, [item.sourceName]: after } } };
-      });
-    }
-    set(st => ({ carryoverState: { carryover: st.carryoverState.carryover.filter(c => c.id !== carryId) } }));
-    get().save();
-    get().showToast('مهمة مترحلة خلصت!');
-  },
-
   dismissCarryover: (carryId) => {
     set(st => ({ carryoverState: { carryover: st.carryoverState.carryover.filter(c => c.id !== carryId) } }));
     get().save();
     get().showToast('تم إلغاء المهمة المترحلة');
   },
 
-  postponeCarryover: (carryId) => {
-    // ترحيل لاحقًا = سيبها زي ما هي (هتتحسب تاني في نهاية اليوم لو ما اتعملتش)
-    get().showToast('هتفضل في المتأخرات لحد ما تخلصها');
-    void carryId;
+  // ---------------- Plan Builder (بند 13-38) ----------------
+  ensureDailyInstance: (date) => {
+    const existing = get().plan.instances[date];
+    if (existing) return existing;
+    const inst = materializeInstance(get().plan.template, date);
+    set(st => ({ plan: { ...st.plan, instances: { ...st.plan.instances, [date]: inst } } }));
+    get().save();
+    return inst;
+  },
+
+  updateDayTemplate: (day, patch) => {
+    set(st => ({
+      plan: {
+        ...st.plan,
+        template: {
+          ...st.plan.template,
+          version: st.plan.template.version + 1,
+          updatedAt: Date.now(),
+          days: st.plan.template.days.map(d => (d.day === day ? { ...d, ...patch } : d))
+        }
+      }
+    }));
+    get().save();
+  },
+
+  addTemplateItem: (day, item) => {
+    set(st => ({
+      plan: {
+        ...st.plan,
+        template: {
+          ...st.plan.template,
+          version: st.plan.template.version + 1,
+          updatedAt: Date.now(),
+          days: st.plan.template.days.map(d => {
+            if (d.day !== day) return d;
+            const newItem: PlanItemTemplate = { ...item, id: genId(), order: d.items.length };
+            return { ...d, enabled: true, items: [...d.items, newItem] };
+          })
+        }
+      }
+    }));
+    get().save();
+    get().showToast('تمت الإضافة للخطة');
+  },
+
+  removeTemplateItem: (day, itemId) => {
+    set(st => ({
+      plan: {
+        ...st.plan,
+        template: {
+          ...st.plan.template,
+          version: st.plan.template.version + 1,
+          updatedAt: Date.now(),
+          days: st.plan.template.days.map(d => (d.day === day ? { ...d, items: d.items.filter(i => i.id !== itemId) } : d))
+        }
+      }
+    }));
+    get().save();
+  },
+
+  reorderTemplateItems: (day, orderedIds) => {
+    set(st => ({
+      plan: {
+        ...st.plan,
+        template: {
+          ...st.plan.template,
+          version: st.plan.template.version + 1,
+          updatedAt: Date.now(),
+          days: st.plan.template.days.map(d => {
+            if (d.day !== day) return d;
+            const byId = new Map(d.items.map(i => [i.id, i]));
+            const items = orderedIds.map((id, idx) => { const it = byId.get(id); return it ? { ...it, order: idx } : null; }).filter((i): i is PlanItemTemplate => !!i);
+            return { ...d, items };
+          })
+        }
+      }
+    }));
+    get().save();
+  },
+
+  updateTemplateItem: (day, itemId, patch) => {
+    set(st => ({
+      plan: {
+        ...st.plan,
+        template: {
+          ...st.plan.template,
+          version: st.plan.template.version + 1,
+          updatedAt: Date.now(),
+          days: st.plan.template.days.map(d => (d.day === day ? { ...d, items: d.items.map(i => (i.id === itemId ? { ...i, ...patch } : i)) } : d))
+        }
+      }
+    }));
+    get().save();
+  },
+
+  addInstanceItem: (date, item) => {
+    get().ensureDailyInstance(date);
+    set(st => {
+      const inst = st.plan.instances[date];
+      if (!inst) return {};
+      const newItem: PlanItem = {
+        id: genId(), date, sourceId: item.sourceId, sourceKind: item.sourceKind, sourceName: item.sourceName,
+        trackingType: item.trackingType, targetAmount: item.targetAmount, completedAmount: 0,
+        estimatedMinutes: item.estimatedMinutes, order: inst.items.length, status: 'pending', priority: item.priority
+      };
+      return { plan: { ...st.plan, instances: { ...st.plan.instances, [date]: { ...inst, items: [...inst.items, newItem] } } } };
+    });
+    get().save();
+    get().showToast('تمت الإضافة لخطة اليوم');
+  },
+
+  removeInstanceItem: (date, itemId) => {
+    set(st => {
+      const inst = st.plan.instances[date];
+      if (!inst) return {};
+      return { plan: { ...st.plan, instances: { ...st.plan.instances, [date]: { ...inst, items: inst.items.filter(i => i.id !== itemId) } } } };
+    });
+    get().save();
+    get().showToast('اتشالت من الخطة (المصدر لسه موجود في مكتبتك)');
+  },
+
+  reorderInstanceItems: (date, orderedIds) => {
+    set(st => {
+      const inst = st.plan.instances[date];
+      if (!inst) return {};
+      const byId = new Map(inst.items.map(i => [i.id, i]));
+      const items = orderedIds.map((id, idx) => { const it = byId.get(id); return it ? { ...it, order: idx } : null; }).filter((i): i is PlanItem => !!i);
+      return { plan: { ...st.plan, instances: { ...st.plan.instances, [date]: { ...inst, items } } } };
+    });
+    get().save();
+  },
+
+  splitInstanceItem: (date, itemId, parts) => {
+    set(st => {
+      const inst = st.plan.instances[date];
+      if (!inst) return {};
+      const original = inst.items.find(i => i.id === itemId);
+      if (!original || parts.length < 2) return {};
+      const totalParts = parts.reduce((a, b) => a + b, 0);
+      const newItems: PlanItem[] = parts.map((amount, idx) => ({
+        ...original,
+        id: genId(),
+        targetAmount: amount,
+        completedAmount: 0,
+        estimatedMinutes: Math.round((original.estimatedMinutes * amount) / (totalParts || 1)),
+        order: original.order + idx * 0.01,
+        status: 'pending',
+        parentItemId: original.id
+      }));
+      const items = inst.items.filter(i => i.id !== itemId).concat(newItems).sort((a, b) => a.order - b.order);
+      return { plan: { ...st.plan, instances: { ...st.plan.instances, [date]: { ...inst, items } } } };
+    });
+    get().save();
+    get().showToast('تم تقسيم المهمة');
+  },
+
+  moveInstanceItem: (fromDate, itemId, toDate) => {
+    get().ensureDailyInstance(toDate);
+    set(st => {
+      const from = st.plan.instances[fromDate];
+      const to = st.plan.instances[toDate];
+      if (!from || !to) return {};
+      const item = from.items.find(i => i.id === itemId);
+      if (!item) return {};
+      return {
+        plan: {
+          ...st.plan,
+          instances: {
+            ...st.plan.instances,
+            [fromDate]: { ...from, items: from.items.filter(i => i.id !== itemId) },
+            [toDate]: { ...to, items: [...to.items, { ...item, date: toDate, order: to.items.length }] }
+          }
+        }
+      };
+    });
+    get().save();
+    get().showToast('اتنقلت المهمة');
+  },
+
+  skipInstanceItem: (date, itemId) => {
+    set(st => {
+      const inst = st.plan.instances[date];
+      if (!inst) return {};
+      return { plan: { ...st.plan, instances: { ...st.plan.instances, [date]: { ...inst, items: inst.items.map(i => (i.id === itemId ? { ...i, status: 'skipped' } : i)) } } } };
+    });
+    get().save();
+  },
+
+  unskipInstanceItem: (date, itemId) => {
+    set(st => {
+      const inst = st.plan.instances[date];
+      if (!inst) return {};
+      return { plan: { ...st.plan, instances: { ...st.plan.instances, [date]: { ...inst, items: inst.items.map(i => (i.id === itemId ? { ...i, status: 'pending' } : i)) } } } };
+    });
+    get().save();
   },
 
   // ---------------- Progress ----------------
@@ -720,52 +880,56 @@ export const useStore = create<Store>((set, get) => ({
 
 // ================= Helpers خارج الـ store (منطق مستقل يستخدم get/set) =================
 
-function isValidUrlLocal(str: string): boolean {
-  try { const u = new URL(str.trim()); return u.protocol === 'http:' || u.protocol === 'https:'; } catch { return false; }
+/** تحديث Source Progress — مستقل تمامًا عن Plan Completion (بند 58) */
+function applySourceProgressDelta(
+  sourceKind: SourceKind, sourceId: string, sourceName: string, amount: number,
+  set: (fn: (s: Store) => Partial<Store>) => void, get: () => Store
+) {
+  if (sourceKind === 'static') {
+    const total = TOTALS[sourceName];
+    if (!total) return;
+    set(st => {
+      const before = st.progressState.progress[sourceName] || 0;
+      const after = Math.min(total, before + amount);
+      return { progressState: { ...st.progressState, progress: { ...st.progressState.progress, [sourceName]: after } } };
+    });
+  } else {
+    const src = get().library.customSources.find(x => x.id === sourceId);
+    if (!src) return;
+    const total = src.totalUnits ?? null;
+    const after = Math.max(0, total != null ? Math.min(total, src.completedUnits + amount) : src.completedUnits + amount);
+    get().updateSourceUnits(sourceId, after);
+  }
 }
 
+/**
+ * بند 19-21، 48-49 — Carryover مبني على DailyPlanInstance/PlanItem بدل الخطة
+ * الثابتة. الـ id الحتمي (date + itemId) بيمنع أي تكرار حتى لو processedDays
+ * اتصفّرت بغلط، وحتى لو فتح المستخدم التطبيق عشرات المرات.
+ */
 function processEndOfDay(dateKey: string, get: () => Store, set: (fn: (s: Store) => Partial<Store>) => void) {
   const s = get();
   if (s.dailyPlan.processedDays[dateKey]) return;
 
-  const modeForDay = s.dailyPlan.dailyModes[dateKey] || null;
-  if (!modeForDay) {
-    set(st => ({ dailyPlan: { ...st.dailyPlan, processedDays: { ...st.dailyPlan.processedDays, [dateKey]: true } } }));
-    return;
-  }
-
-  const tasks = getTasks(modeForDay, dateKey, s.progressState.islamicPhase, s.progressState.progress);
+  const instance = get().ensureDailyInstance(dateKey);
   const newItems: CarryoverItem[] = [];
-  // Defense-in-depth: حتى لو processedDays اتصفّر بغلط (import/manual edit)، الـ id
-  // الحتمي (date + taskId + sourceName) بيمنع أي تكرار فعلي — بند 21.
-  const existingIds = new Set(s.carryoverState.carryover.map(c => c.id));
+  const existingIds = new Set(get().carryoverState.carryover.map(c => c.id));
 
-  tasks.forEach(t => {
-    const taskKey = dateKey + '_' + t.id;
-    const taskState = s.tasksState.tasks[taskKey] || {};
-    if (taskState.done) return;
+  instance.items.forEach(item => {
+    if (item.status !== 'pending') return; // done أو skipped مش محتاجين ترحيل
+    const remaining = item.targetAmount - item.completedAmount;
+    if (remaining <= 0) return;
 
-    const episode = getNextEpisodeNumber(t.name, s.progressState.progress);
-    const stoppedMap = s.tasksState.stopped[t.name] || {};
-    const stoppedEntry = stoppedMap[String(episode)];
-    const duration = DURATIONS[t.name] || 45;
-
-    let remainMins: number;
-    if (stoppedEntry && stoppedEntry.time && stoppedEntry.savedAt === dateKey) {
-      const doneMins = timeToMins(stoppedEntry.time);
-      remainMins = Math.max(0, duration - doneMins);
-    } else {
-      remainMins = duration;
-    }
-    if (remainMins <= 0) return;
-
-    const deterministicId = `${dateKey}_${t.id}_${t.name}`;
+    const deterministicId = `${dateKey}_${item.id}`;
     if (existingIds.has(deterministicId)) return;
 
+    const remainMinutes = Math.max(1, Math.round((item.estimatedMinutes * remaining) / (item.targetAmount || 1)));
+
     newItems.push({
-      id: deterministicId, sourceName: t.name, originalTaskId: t.id, fromDate: dateKey, episode,
-      remainMinutes: remainMins, stoppedTime: stoppedEntry?.time || null, url: stoppedEntry?.url || null,
-      type: t.type, meta: t.meta
+      id: deterministicId, sourceName: item.sourceName, originalTaskId: item.id, fromDate: dateKey,
+      episode: item.sourceKind === 'static' ? (s.progressState.progress[item.sourceName] || 0) + 1 : 0,
+      remainMinutes, stoppedTime: null, url: null, type: 'listening', meta: '',
+      planItemId: item.id, trackingType: item.trackingType, remainingAmount: remaining
     });
   });
 
@@ -807,10 +971,4 @@ function validateImportedState(payload: unknown): { ok: true; data: unknown } | 
   if (data.data && typeof data.data === 'object') data = data.data as Record<string, unknown>;
   if (typeof data !== 'object' || data === null) return { ok: false, reason: 'بيانات غير موجودة' };
   return { ok: true, data };
-}
-
-// دالة مساعدة بره الـ store للاستخدام في الواجهات (getCurrentZadSubject wrapper)
-export function useZadSubject(): string | null {
-  const progress = useStore(s => s.progressState.progress);
-  return getCurrentZadSubject(progress);
 }

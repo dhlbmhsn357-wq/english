@@ -3,6 +3,7 @@
 // ============================================================
 import type { AppState, VocabWord } from '../types';
 import { genId } from './utils';
+import { seedTemplateFromLegacySchedule } from './planEngine';
 
 export const SCHEMA_VERSION = 6;
 
@@ -22,7 +23,10 @@ export function defaultState(): AppState {
     library: { customSources: [] },
     sessions: { sessions: [] },
     attendance: { attendance: [], streak: 0, lastActiveDate: null, lastStreakDate: null },
-    wins: { wins: [], weeklyWin: '', weeklyWinWeek: null }
+    wins: { wins: [], weeklyWin: '', weeklyWinWeek: null },
+    // بند 69 — Migration: مستخدم جديد بالكامل بياخد نفس الخطة الافتراضية
+    // القديمة كنقطة بداية، قابلة للتعديل الكامل من أول لحظة.
+    plan: { template: seedTemplateFromLegacySchedule(1), instances: {} }
   };
 }
 
@@ -45,7 +49,13 @@ export function migrateState(oldState: unknown): AppState {
 
   // لو already V6 domains shape
   if (old.schemaVersion === 6 && old.userSettings) {
-    return mergeDomains(base, old as unknown as Partial<AppState>);
+    const merged = mergeDomains(base, old as unknown as Partial<AppState>);
+    // مستخدم V6 قديم من قبل ما ميزة الخطة المرنة تتضاف — نبني له Template
+    // أولي يطابق سلوكه الحالي بالظبط (بند 69)، بدل ما يفضل بدون خطة.
+    if (!old.plan || !(old.plan as Record<string, unknown>).template) {
+      merged.plan.template = seedTemplateFromLegacySchedule(merged.progressState.islamicPhase);
+    }
+    return merged;
   }
 
   // V4/V5 كانوا flat state — نحوّلهم لـ domains
@@ -120,6 +130,9 @@ export function migrateState(oldState: unknown): AppState {
   // sessions مفهاش شكل قديم (بند 29 جديد في V6) — بتتبنى فاضية وتتملى من الاستخدام الجديد
   migrated.sessions.sessions = [];
 
+  // بند 69 — Template أولي يطابق سلوك V4/V5 القديم تمامًا حسب مرحلته الفعلية
+  migrated.plan.template = seedTemplateFromLegacySchedule(migrated.progressState.islamicPhase);
+
   migrated.schemaVersion = SCHEMA_VERSION;
   return migrated;
 }
@@ -136,6 +149,7 @@ function mergeDomains(base: AppState, partial: Partial<AppState>): AppState {
     library: { ...base.library, ...partial.library },
     sessions: { ...base.sessions, ...partial.sessions },
     attendance: { ...base.attendance, ...partial.attendance },
-    wins: { ...base.wins, ...partial.wins }
+    wins: { ...base.wins, ...partial.wins },
+    plan: { ...base.plan, ...partial.plan }
   };
 }

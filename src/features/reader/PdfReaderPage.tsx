@@ -36,7 +36,7 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
   const [numPages, setNumPages] = useState(0);
   const [page, setPage] = useState(1);
   const [pageInput, setPageInput] = useState('1');
-  const [scale, setScale] = useState(1.1);
+  const [scale, setScale] = useState<number | null>(null); // null = لسه هيتحسب Fit Width
   const [controlsVisible, setControlsVisible] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -51,6 +51,7 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
   const loadingTaskRef = useRef<{ destroy: () => Promise<void> } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const textDivsRef = useRef<HTMLElement[]>([]);
   const pageTextRef = useRef('');
   const renderGenRef = useRef(0);
@@ -59,6 +60,18 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
   sourceRef.current = source;
   const pageRef = useRef(page);
   pageRef.current = page;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+  // Pinch-zoom tracking
+  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
+  const lastTapRef = useRef(0);
+
+  function fitWidthScale(naturalWidth: number): number {
+    const container = bodyRef.current;
+    const available = (container?.clientWidth || window.innerWidth) - 24; // padding
+    const s = available / naturalWidth;
+    return Math.min(2.5, Math.max(0.5, s));
+  }
 
   // ---------------- تحميل الملف + بدء جلسة القراءة (بند 2، 5) ----------------
   useEffect(() => {
@@ -142,6 +155,8 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
   }, []);
 
   // ---------------- رسم الصفحة الحالية (Canvas + TextLayer) (بند 32-33: صفحة واحدة بس في الذاكرة) ----------------
+  // القاعدة الأساسية: الـ Canvas هو الرندر الأصلي لـ PDF.js — مفيش إعادة تكوين
+  // للنص المرئي بـ HTML أبدًا. الـ TextLayer شفافة بالكامل، لأغراض التفاعل فقط.
   useEffect(() => {
     if (loadState !== 'ready' || !docRef.current) return;
     const doc = docRef.current;
@@ -155,14 +170,27 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
 
       const pdfPage = await doc.getPage(page);
       if (myGen !== renderGenRef.current) return;
-      const viewport = pdfPage.getViewport({ scale });
 
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      // أول مرة نفتح الملف: نحسب Fit Width بناءً على العرض الطبيعي للصفحة
+      if (scaleRef.current === null) {
+        const natural = pdfPage.getViewport({ scale: 1 });
+        setScale(fitWidthScale(natural.width));
+        return; // هيعاد تشغيل الـ effect لما scale يتحدث
+      }
+
+      const cssScale = scaleRef.current;
+      const viewport = pdfPage.getViewport({ scale: cssScale });
+
+      // بند 5 — High DPI: دقة الـ Canvas الداخلية أعلى من حجم العرض بصريًا،
+      // عشان النص (خصوصًا العربي المتصل) يطلع حاد مش Blurry على شاشات الموبايل.
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
+      canvas.width = Math.round(viewport.width * pixelRatio);
+      canvas.height = Math.round(viewport.height * pixelRatio);
       canvas.style.width = viewport.width + 'px';
       canvas.style.height = viewport.height + 'px';
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
       renderTask = pdfPage.render({ canvasContext: ctx, viewport, canvas });
       await renderTask.promise;
@@ -196,6 +224,18 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
     renderPage().catch(e => console.error('renderPage failed:', e));
     return () => { renderTask?.cancel(); };
   }, [loadState, page, scale, highlights]);
+
+  // إعادة حساب Fit Width لما الصفحة/المصدر يتغيّر (كتاب جديد ممكن يبقى بمقاس مختلف)
+  useEffect(() => {
+    setScale(null);
+  }, [sourceId]);
+
+  // بند 8 — الـ Controls تختفي تلقائيًا بعد فترة قصيرة من عدم التفاعل
+  useEffect(() => {
+    if (!controlsVisible || loadState !== 'ready') return;
+    const t = setTimeout(() => setControlsVisible(false), 3500);
+    return () => clearTimeout(t);
+  }, [controlsVisible, loadState, page]);
 
   // ---------------- تتبع موضع القراءة (Autosave مؤجّل قصير) (بند 4، 18، 26) ----------------
   useEffect(() => {
@@ -317,6 +357,45 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
     }
   }
 
+  function zoomBy(delta: number) {
+    setScale(s => Math.min(2.5, Math.max(0.5, (s ?? 1) + delta)));
+  }
+
+  function resetFitWidth() {
+    setScale(null);
+  }
+
+  // ---- Pinch-to-zoom + double-tap (بند 7) ----
+  function handleTouchStart(e: React.TouchEvent) {
+    if (e.touches.length === 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      pinchRef.current = { startDist: dist, startScale: scaleRef.current ?? 1 };
+    } else if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        zoomBy(scaleRef.current && scaleRef.current > 1.3 ? -0.6 : 0.6);
+        lastTapRef.current = 0;
+      } else {
+        lastTapRef.current = now;
+      }
+    }
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (e.touches.length === 2 && pinchRef.current) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const ratio = dist / pinchRef.current.startDist;
+      const next = Math.min(2.5, Math.max(0.5, pinchRef.current.startScale * ratio));
+      setScale(next);
+    }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (e.touches.length < 2) pinchRef.current = null;
+  }
+
   const pagesWithNotes = new Set(notes.map(n => n.page));
 
   return (
@@ -326,17 +405,25 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
           <IconButton icon={ReaderIcons.back} label="رجوع" onClick={handleExit} />
           <div className={styles.headerCenter}>
             <div className={styles.headerTitle}>{source?.title || '...'}</div>
-            {loadState === 'ready' && <div className={styles.headerPage}>{page} / {numPages}</div>}
+            {loadState === 'ready' && <div className={styles.headerPage} dir="ltr">{page} / {numPages}</div>}
           </div>
           <div className={styles.headerActions}>
-            <IconButton icon={ReaderIcons.zoomOut} label="تصغير" size="sm" onClick={() => setScale(s => Math.max(0.6, s - 0.15))} />
-            <IconButton icon={ReaderIcons.zoomIn} label="تكبير" size="sm" onClick={() => setScale(s => Math.min(2.5, s + 0.15))} />
+            <IconButton icon={ReaderIcons.zoomOut} label="تصغير" size="sm" onClick={() => zoomBy(-0.2)} />
+            <IconButton icon={ReaderIcons.zoomIn} label="تكبير" size="sm" onClick={() => zoomBy(0.2)} />
+            <IconButton icon={ReaderIcons.fitWidth} label="ملائمة العرض" size="sm" onClick={resetFitWidth} />
             <IconButton icon={fullscreen ? ReaderIcons.exitFullscreen : ReaderIcons.fullscreen} label="ملء الشاشة" size="sm" onClick={toggleFullscreen} />
           </div>
         </header>
       )}
 
-      <div className={styles.body} onClick={() => setControlsVisible(v => !v)}>
+      <div
+        ref={bodyRef}
+        className={styles.body}
+        onClick={() => setControlsVisible(v => !v)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {loadState === 'loading' && (
           <div className={styles.centerMsg}>
             <ReaderIcons.loading size={28} strokeWidth={2} className={styles.spin} />
@@ -359,7 +446,7 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
       </div>
 
       {controlsVisible && loadState === 'ready' && (
-        <footer className={styles.footer}>
+        <footer className={styles.footer} dir="ltr">
           <IconButton icon={ReaderIcons.prev} label="السابقة" onClick={() => goToPage(page - 1)} disabled={page <= 1} />
           <input
             className={styles.pageInput}
