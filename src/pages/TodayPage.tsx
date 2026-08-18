@@ -33,7 +33,6 @@ export function TodayPage({ onStartSession }: TodayPageProps) {
   );
 
   const allDone = mode && tasks.length > 0 && tasks.every(task => (tasksState[t + '_' + task.id] || {}).done) && carryover.length === 0;
-  const islamicDoneToday = tasks.some(task => task.type !== 'vocab' && (tasksState[t + '_' + task.id] || {}).done);
 
   return (
     <>
@@ -66,7 +65,7 @@ export function TodayPage({ onStartSession }: TodayPageProps) {
             </div>
           )}
 
-          {islamicDoneToday && <SpeakingChallengeCard />}
+          <SpeakingChallengeCard />
 
           {/* على الموبايل/تابلت: الكروت دي بتظهر هنا تحت المحتوى الرئيسي */}
           <div className={styles.mobileSideStack}>
