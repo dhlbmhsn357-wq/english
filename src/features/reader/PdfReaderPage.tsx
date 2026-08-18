@@ -208,6 +208,13 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
       if (myGen !== renderGenRef.current) return;
 
       const divs = textLayer.textDivs as HTMLElement[];
+      // بند 3 — نضمن شفافية طبقة النص بالـ inline style مباشرة (مش معتمدين على
+      // CSS Modules :global() اللي ممكن ميتطبقش صح على DOM بيحقنه PDF.js
+      // نفسه). لو الطبقة دي ظهرت فوق الـ Canvas بأي شكل، النص بيتكرر ويتشوّه.
+      divs.forEach(div => {
+        div.style.color = 'transparent';
+        div.style.webkitTextFillColor = 'transparent';
+      });
       textDivsRef.current = divs;
       pageTextRef.current = buildPageText(divs);
 
