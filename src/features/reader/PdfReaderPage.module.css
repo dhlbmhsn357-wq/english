@@ -1,0 +1,108 @@
+.wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3);
+  background: var(--overlay);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  z-index: 2;
+}
+.headerCenter { flex: 1; min-width: 0; text-align: center; }
+.headerTitle { font-size: var(--text-sm); font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.headerPage { font-size: 11px; color: var(--text-faint); }
+.headerActions { display: flex; gap: 4px; }
+
+.body {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-4) var(--space-3) 100px;
+}
+
+.centerMsg {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+  max-width: 280px;
+}
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pageWrap {
+  position: relative;
+  box-shadow: var(--shadow-lg);
+  background: #fff;
+  border-radius: 2px;
+}
+.canvas { display: block; }
+
+/* TextLayer — مطابق لمعايير PDF.js عشان التحديد يبقى دقيق فوق النص الحقيقي */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-align: initial;
+  transform-origin: 0 0;
+}
+.textLayer :global(span), .textLayer :global(br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+}
+.textLayer :global(.msr-highlight) {
+  border-radius: 2px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--overlay);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+}
+.pageInput {
+  width: 44px;
+  text-align: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 4px;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+.pageOf { font-size: var(--text-sm); color: var(--text-muted); }
+.notePill {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--gold-dim);
+  color: var(--primary);
+  margin-inline-start: 4px;
+}

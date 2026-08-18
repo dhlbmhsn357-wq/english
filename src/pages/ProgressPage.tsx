@@ -12,7 +12,11 @@ import { getWeekStartKey } from '../lib/dateUtils';
 import type { LearningSource } from '../types';
 import styles from './ProgressPage.module.css';
 
-export function ProgressPage() {
+interface ProgressPageProps {
+  onOpenReader: (sourceId: string, page?: number) => void;
+}
+
+export function ProgressPage({ onOpenReader }: ProgressPageProps) {
   const progress = useStore(s => s.progressState.progress);
   const updateProgress = useStore(s => s.updateProgress);
   const sessions = useStore(s => s.sessions.sessions);
@@ -99,7 +103,7 @@ export function ProgressPage() {
         </div>
       )}
 
-      <SourceDetailSheet source={detailSource} onClose={() => setDetailId(null)} />
+      <SourceDetailSheet source={detailSource} onClose={() => setDetailId(null)} onOpenReader={onOpenReader} />
     </div>
   );
 }

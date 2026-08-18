@@ -15,12 +15,24 @@ import { getTasks, getNextEpisodeNumber, getCurrentZadSubject } from '../lib/tas
 import { TOTALS, PHASE_SOURCES, DURATIONS } from '../lib/staticData';
 import { genId, timeToMins } from '../lib/utils';
 
+interface ActiveReadingSession {
+  sourceId: string;
+  sourceTitle: string;
+  startPage: number;
+  startedAt: number;
+  wordsSaved: number;
+  highlightsAdded: number;
+  notesAdded: number;
+}
+
 interface UIState {
   lastSaveOk: boolean;
   safeMode: boolean; // لو حصل init error، بنشتغل بحالة آمنة من غير مسح بيانات
   toast: { msg: string; key: number } | null;
   activeSession: { taskId: string; sourceName: string; episode: number; isCarryover: boolean; carryId?: string } | null;
   phaseModal: { open: boolean; phase: number; allComplete: boolean };
+  activeReadingSession: ActiveReadingSession | null;
+  lastReadingSummary: LearningSession | null;
 }
 
 interface Store extends AppState, UIState {
@@ -92,6 +104,22 @@ interface Store extends AppState, UIState {
   setSourceStatus: (id: string, status: CustomSourceStatus) => void;
   deleteSource: (id: string) => void;
 
+  // ---- reading (Study Reader) ----
+  updateReadingPosition: (sourceId: string, page: number, totalPages: number | null) => void;
+  startReadingSession: (sourceId: string, sourceTitle: string, startPage: number) => void;
+  bumpReadingStat: (kind: 'word' | 'highlight' | 'note') => void;
+  endReadingSession: (endPage: number) => LearningSession | null;
+  cancelReadingSession: () => void;
+  clearReadingSummary: () => void;
+
+  // ---- vocabulary with context ----
+  addWordWithContext: (
+    word: string,
+    meaning: string,
+    context?: { sourceId?: string; sourceTitle?: string; page?: number; sentence?: string }
+  ) => { status: 'added' | 'duplicate'; existing?: VocabWord };
+  updateWordContext: (id: string, context: { sourceId?: string; sourceTitle?: string; page?: number; sentence?: string }, mode: 'replace' | 'append') => void;
+
   // ---- import/export ----
   exportSnapshot: () => AppState;
   importSnapshot: (data: unknown) => { ok: boolean; reason?: string };
@@ -124,6 +152,8 @@ export const useStore = create<Store>((set, get) => ({
   toast: null,
   activeSession: null,
   phaseModal: { open: false, phase: 1, allComplete: false },
+  activeReadingSession: null,
+  lastReadingSummary: null,
 
   hydrate: () => {
     try {
@@ -507,7 +537,15 @@ export const useStore = create<Store>((set, get) => ({
       notes: input.notes || undefined,
       lastActivityAt: null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      fileType: input.fileType ?? null,
+      fileRef: input.fileRef ?? null,
+      fileUrl: input.fileUrl ?? null,
+      fileName: input.fileName ?? null,
+      fileSize: input.fileSize ?? null,
+      currentPage: input.currentPage ?? 1,
+      lastOpenedPage: input.lastOpenedPage ?? 1,
+      readingMinutesTotal: 0
     };
     set(st => ({ library: { customSources: [source, ...st.library.customSources] } }));
     get().save();
@@ -556,6 +594,110 @@ export const useStore = create<Store>((set, get) => ({
     get().showToast('تم حذف المصدر');
   },
 
+  // ---------------- Reading (Study Reader) ----------------
+  updateReadingPosition: (sourceId, page, totalPages) => {
+    set(st => ({
+      library: {
+        customSources: st.library.customSources.map(src => {
+          if (src.id !== sourceId) return src;
+          const highest = Math.max(src.completedUnits || 0, page);
+          const clampedHighest = totalPages ? Math.min(highest, totalPages) : highest;
+          const status: CustomSourceStatus =
+            totalPages && clampedHighest >= totalPages ? 'completed' : 'in-progress';
+          return {
+            ...src,
+            currentPage: page,
+            lastOpenedPage: page,
+            completedUnits: clampedHighest,
+            status,
+            lastActivityAt: Date.now(),
+            updatedAt: Date.now()
+          };
+        })
+      }
+    }));
+    get().save();
+  },
+
+  startReadingSession: (sourceId, sourceTitle, startPage) => {
+    set({ activeReadingSession: { sourceId, sourceTitle, startPage, startedAt: Date.now(), wordsSaved: 0, highlightsAdded: 0, notesAdded: 0 } });
+  },
+
+  bumpReadingStat: (kind) => {
+    set(st => {
+      if (!st.activeReadingSession) return {};
+      const key = kind === 'word' ? 'wordsSaved' : kind === 'highlight' ? 'highlightsAdded' : 'notesAdded';
+      return { activeReadingSession: { ...st.activeReadingSession, [key]: st.activeReadingSession[key] + 1 } };
+    });
+  },
+
+  endReadingSession: (endPage) => {
+    const s = get();
+    const rs = s.activeReadingSession;
+    if (!rs) return null;
+    const durationMinutes = Math.max(0, Math.round((Date.now() - rs.startedAt) / 60000));
+    const pagesRead = Math.max(0, endPage - rs.startPage + 1);
+
+    const session: LearningSession = {
+      id: genId(), date: todayKey(), taskId: 'reading', sourceId: rs.sourceId,
+      episodeNumber: null, startedAt: rs.startedAt, endedAt: Date.now(),
+      durationMinutes, completed: true, stoppedAt: null, note: '', difficulty: null, isCarryover: false,
+      type: 'reading', startPage: rs.startPage, endPage, pagesRead,
+      wordsSaved: rs.wordsSaved, highlightsAdded: rs.highlightsAdded, notesAdded: rs.notesAdded
+    };
+
+    set(st => ({
+      sessions: { sessions: [...st.sessions.sessions, session] },
+      activeReadingSession: null,
+      lastReadingSummary: session
+    }));
+    get().save();
+    return session;
+  },
+
+  cancelReadingSession: () => set({ activeReadingSession: null }),
+  clearReadingSummary: () => set({ lastReadingSummary: null }),
+
+  // ---------------- Vocabulary with context (بند 13-14) ----------------
+  addWordWithContext: (word, meaning, context) => {
+    const w = word.trim();
+    if (!w) return { status: 'added' };
+    const s = get();
+    const existing = s.vocabulary.vocab.find(x => x.word.toLowerCase() === w.toLowerCase());
+    if (existing) {
+      return { status: 'duplicate', existing };
+    }
+    const entry: VocabWord = {
+      id: genId(), word: w, meaning: meaning.trim(), addedAt: Date.now(), nextReview: Date.now(),
+      reviewCount: 0, difficulty: '', lastReviewedAt: null,
+      sourceId: context?.sourceId, sourceTitle: context?.sourceTitle, page: context?.page, sentence: context?.sentence
+    };
+    set(st => ({ vocabulary: { vocab: [...st.vocabulary.vocab, entry] } }));
+    get().save();
+    get().showToast('أضفت: ' + w);
+    if (s.activeReadingSession) get().bumpReadingStat('word');
+    return { status: 'added' };
+  },
+
+  updateWordContext: (id, context, mode) => {
+    set(st => ({
+      vocabulary: {
+        vocab: st.vocabulary.vocab.map(v => {
+          if (v.id !== id) return v;
+          if (mode === 'replace') {
+            return { ...v, sourceId: context.sourceId ?? v.sourceId, sourceTitle: context.sourceTitle ?? v.sourceTitle, page: context.page ?? v.page, sentence: context.sentence ?? v.sentence };
+          }
+          const combinedSentence = v.sentence && context.sentence && v.sentence !== context.sentence
+            ? `${v.sentence}\n---\n${context.sentence}`
+            : (context.sentence ?? v.sentence);
+          return { ...v, sourceId: context.sourceId ?? v.sourceId, sourceTitle: context.sourceTitle ?? v.sourceTitle, page: context.page ?? v.page, sentence: combinedSentence };
+        })
+      }
+    }));
+    get().save();
+    get().showToast('تم تحديث سياق الكلمة');
+  },
+
   // ---------------- Import / Export ----------------
   exportSnapshot: () => snapshot(get()),
 
@@ -594,6 +736,9 @@ function processEndOfDay(dateKey: string, get: () => Store, set: (fn: (s: Store)
 
   const tasks = getTasks(modeForDay, dateKey, s.progressState.islamicPhase, s.progressState.progress);
   const newItems: CarryoverItem[] = [];
+  // Defense-in-depth: حتى لو processedDays اتصفّر بغلط (import/manual edit)، الـ id
+  // الحتمي (date + taskId + sourceName) بيمنع أي تكرار فعلي — بند 21.
+  const existingIds = new Set(s.carryoverState.carryover.map(c => c.id));
 
   tasks.forEach(t => {
     const taskKey = dateKey + '_' + t.id;
@@ -614,8 +759,11 @@ function processEndOfDay(dateKey: string, get: () => Store, set: (fn: (s: Store)
     }
     if (remainMins <= 0) return;
 
+    const deterministicId = `${dateKey}_${t.id}_${t.name}`;
+    if (existingIds.has(deterministicId)) return;
+
     newItems.push({
-      id: genId(), sourceName: t.name, originalTaskId: t.id, fromDate: dateKey, episode,
+      id: deterministicId, sourceName: t.name, originalTaskId: t.id, fromDate: dateKey, episode,
       remainMinutes: remainMins, stoppedTime: stoppedEntry?.time || null, url: stoppedEntry?.url || null,
       type: t.type, meta: t.meta
     });

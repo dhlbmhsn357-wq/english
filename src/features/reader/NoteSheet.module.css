@@ -1,0 +1,24 @@
+.quoted {
+  background: var(--surface-2);
+  border-right: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+  max-height: 90px;
+  overflow-y: auto;
+}
+.textarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  color: var(--text);
+  font-size: var(--text-sm);
+  resize: vertical;
+  margin-bottom: var(--space-4);
+}
+.textarea:focus { outline: none; border-color: var(--primary); }

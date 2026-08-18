@@ -3,6 +3,7 @@ import { BottomSheet } from '../components/BottomSheet';
 import { useStore } from '../store/useStore';
 import { ActionIcons } from './icons';
 import { Button } from './ui/Button';
+import { exportPdfMetadata, importPdfMetadata } from '../lib/db';
 import type { Theme, FontFamily } from '../types';
 import styles from './SettingsSheet.module.css';
 
@@ -42,15 +43,21 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
 
-  function handleExport() {
+  async function handleExport() {
     const data = exportSnapshot();
-    const payload = { app: 'Massar Mohsen', schemaVersion: data.schemaVersion, exportedAt: new Date().toISOString(), data };
+    // بند 29 — الـ Backup بيشمل Highlights/Notes (Metadata) لكن مش ملفات الـ PDF نفسها
+    // (بتفضل محفوظة محليًا في IndexedDB بس — أكبر من ما ينفع يتحط في JSON واحد)
+    const pdfMeta = await exportPdfMetadata();
+    const payload = {
+      app: 'Massar Mohsen', schemaVersion: data.schemaVersion, exportedAt: new Date().toISOString(),
+      data, pdfHighlights: pdfMeta.highlights, pdfNotes: pdfMeta.notes, pdfFilesInfo: pdfMeta.files
+    };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'massar_mohsen_backup.json'; a.click();
     URL.revokeObjectURL(url);
-    showToast('تم تصدير البيانات');
+    showToast(pdfMeta.files.length > 0 ? 'تم تصدير البيانات (ملفات الـ PDF نفسها لازم ترفعها تاني بعد الاستيراد)' : 'تم تصدير البيانات');
   }
 
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -65,7 +72,10 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
         const result = importSnapshot(parsed);
-        if (!result.ok) showToast('ملف النسخة الاحتياطية غير صالح أو تالف');
+        if (!result.ok) { showToast('ملف النسخة الاحتياطية غير صالح أو تالف'); return; }
+        if (parsed?.pdfHighlights || parsed?.pdfNotes) {
+          importPdfMetadata({ highlights: parsed.pdfHighlights, notes: parsed.pdfNotes });
+        }
       } catch {
         showToast('ملف النسخة الاحتياطية غير صالح أو تالف');
       } finally {

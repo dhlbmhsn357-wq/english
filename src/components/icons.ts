@@ -58,6 +58,20 @@ import {
   Flag,
   PartyPopper,
   BookMarked,
+  Bookmark,
+  Highlighter,
+  Volume2,
+  StickyNote,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Minimize,
+  ArrowRight,
+  Copy,
+  ListTree,
+  FileType,
+  Loader2,
+  WifiOff as OfflineIcon,
 } from 'lucide-react';
 
 /** خصائص افتراضية موحدة لكل الأيقونات — نفس الحجم والسُمك دايمًا */
@@ -126,7 +140,32 @@ export const ContentTypeIcons = {
   article: FileText,
   website: Globe,
   vocabulary: Languages,
+  pdf: FileType,
   other: Shapes,
+} as const;
+
+// ---- Study Reader ----
+export const ReaderIcons = {
+  back: ArrowRight, // RTL: السهم لليمين = رجوع
+  more: MoreHorizontal,
+  search: Search,
+  bookmark: Bookmark,
+  highlight: Highlighter,
+  translate: Languages,
+  speak: Volume2,
+  note: StickyNote,
+  copy: Copy,
+  zoomIn: ZoomIn,
+  zoomOut: ZoomOut,
+  fullscreen: Maximize,
+  exitFullscreen: Minimize,
+  toc: ListTree,
+  loading: Loader2,
+  offline: OfflineIcon,
+  prev: ChevronLeft,  // ترقيم الصفحات تصاعدي دايمًا بغض النظر عن اتجاه الواجهة
+  next: ChevronRight,
+  saveWord: Languages,
+  addToVocab: Plus,
 } as const;
 
 export type ContentTypeKey = keyof typeof ContentTypeIcons;

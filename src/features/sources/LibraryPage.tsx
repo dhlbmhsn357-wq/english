@@ -24,9 +24,10 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 interface LibraryPageProps {
   onContinueSource: (sourceName: string) => void;
+  onOpenReader: (sourceId: string, page?: number) => void;
 }
 
-export function LibraryPage({ onContinueSource }: LibraryPageProps) {
+export function LibraryPage({ onContinueSource, onOpenReader }: LibraryPageProps) {
   const progress = useStore(s => s.progressState.progress);
   const stopped = useStore(s => s.tasksState.stopped);
   const customSources = useStore(s => s.library.customSources);
@@ -74,9 +75,15 @@ export function LibraryPage({ onContinueSource }: LibraryPageProps) {
 
   const detailSource: LearningSource | null = customSources.find(c => c.id === detailId) || null;
 
-  function handleCardAction(d: DisplaySource) {
-    if (d.kind === 'static') onContinueSource(d.id);
-    else setDetailId(d.id);
+  function handleContinue(d: DisplaySource) {
+    if (d.kind === 'static') { onContinueSource(d.id); return; }
+    const src = customSources.find(c => c.id === d.id);
+    if (src?.contentType === 'pdf' && (src.fileRef || src.fileUrl)) { onOpenReader(d.id); return; }
+    setDetailId(d.id);
+  }
+
+  function handleOpenDetails(d: DisplaySource) {
+    setDetailId(d.id);
   }
 
   return (
@@ -115,13 +122,13 @@ export function LibraryPage({ onContinueSource }: LibraryPageProps) {
         filteredByStatus.length === 0 ? (
           <EmptyState title="مفيش نتائج" subtitle="جرب فلتر مختلف أو كلمة بحث تانية." />
         ) : (
-          <SourceGrid items={filteredByStatus} onAction={handleCardAction} />
+          <SourceGrid items={filteredByStatus} onContinue={handleContinue} onOpenDetails={handleOpenDetails} />
         )
       ) : (
         <>
-          {inProgress.length > 0 && <Group title="جاري الآن" items={inProgress} onAction={handleCardAction} />}
-          {restList.length > 0 && <Group title="باقي المكتبة" items={restList} onAction={handleCardAction} />}
-          {completed.length > 0 && <Group title="مكتمل" items={completed} onAction={handleCardAction} />}
+          {inProgress.length > 0 && <Group title="جاري الآن" items={inProgress} onContinue={handleContinue} onOpenDetails={handleOpenDetails} />}
+          {restList.length > 0 && <Group title="باقي المكتبة" items={restList} onContinue={handleContinue} onOpenDetails={handleOpenDetails} />}
+          {completed.length > 0 && <Group title="مكتمل" items={completed} onContinue={handleContinue} onOpenDetails={handleOpenDetails} />}
         </>
       )}
 
@@ -139,29 +146,31 @@ export function LibraryPage({ onContinueSource }: LibraryPageProps) {
       </div>
 
       <AddSourceSheet open={addOpen} onClose={() => setAddOpen(false)} />
-      <SourceDetailSheet source={detailSource} onClose={() => setDetailId(null)} />
+      <SourceDetailSheet source={detailSource} onClose={() => setDetailId(null)} onOpenReader={onOpenReader} />
     </div>
   );
 }
 
-function Group({ title, items, onAction }: { title: string; items: DisplaySource[]; onAction: (d: DisplaySource) => void }) {
+interface GridActions { onContinue: (d: DisplaySource) => void; onOpenDetails: (d: DisplaySource) => void }
+
+function Group({ title, items, onContinue, onOpenDetails }: { title: string; items: DisplaySource[] } & GridActions) {
   return (
     <div className={styles.section}>
       <div className={styles.sectionLabel}>{title}</div>
-      <SourceGrid items={items} onAction={onAction} />
+      <SourceGrid items={items} onContinue={onContinue} onOpenDetails={onOpenDetails} />
     </div>
   );
 }
 
-function SourceGrid({ items, onAction }: { items: DisplaySource[]; onAction: (d: DisplaySource) => void }) {
+function SourceGrid({ items, onContinue, onOpenDetails }: { items: DisplaySource[] } & GridActions) {
   return (
     <div className={styles.grid}>
       {items.map(d => (
         <SourceCard
           key={d.id}
           source={d}
-          onContinue={!d.isCompleted ? () => onAction(d) : undefined}
-          onOpenDetails={d.kind === 'custom' ? () => onAction(d) : undefined}
+          onContinue={!d.isCompleted ? () => onContinue(d) : undefined}
+          onOpenDetails={d.kind === 'custom' ? () => onOpenDetails(d) : undefined}
         />
       ))}
     </div>

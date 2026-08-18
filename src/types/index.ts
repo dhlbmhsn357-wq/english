@@ -19,7 +19,7 @@ export interface LearningSession {
   id: string;
   date: string;              // YYYY-MM-DD محلي
   taskId: string;            // 'islamic' | 'zad' | 'vocab' | 'english' | carry id
-  sourceId: string;          // اسم المصدر (SourceName)
+  sourceId: string;          // اسم المصدر (SourceName) أو LearningSource.id للمصادر المخصصة
   episodeNumber: number | null;
   startedAt: number;         // timestamp
   endedAt: number | null;
@@ -29,6 +29,16 @@ export interface LearningSession {
   note: string;
   difficulty: Difficulty | null;
   isCarryover: boolean;
+
+  // ---- Reading sessions (Study Reader) — كل الحقول دي اختيارية عشان
+  // الجلسات القديمة (بدون type) تفضل صالحة بدون Migration ---
+  type?: 'reading';
+  startPage?: number;
+  endPage?: number;
+  pagesRead?: number;
+  wordsSaved?: number;
+  highlightsAdded?: number;
+  notesAdded?: number;
 }
 
 // ------------------------------------------------------------
@@ -68,6 +78,7 @@ export interface CarryoverItem {
   url: string | null;
   type: TaskType;
   meta: string;
+  remainingPages?: number; // مخصص لمهام القراءة (بند 19) — اختياري بالكامل
 }
 
 export interface VocabWord {
@@ -79,6 +90,13 @@ export interface VocabWord {
   reviewCount: number;
   difficulty: Difficulty | '';
   lastReviewedAt: number | null;
+
+  // ---- سياق الكلمة (بند 13) — من أين اتحفظت الكلمة، اختياري بالكامل
+  // عشان الكلمات القديمة (من التطبيق أو من V4/V5) تفضل صالحة ---
+  sourceId?: string;
+  sourceTitle?: string;
+  page?: number;
+  sentence?: string;
 }
 
 export interface WeeklyWinEntry {
@@ -131,7 +149,7 @@ export interface VocabularyState {
 // ------------------------------------------------------------
 export type SourceContentType =
   | 'listening' | 'speaking' | 'video' | 'book' | 'course'
-  | 'podcast' | 'article' | 'website' | 'vocabulary' | 'other';
+  | 'podcast' | 'article' | 'website' | 'vocabulary' | 'pdf' | 'other';
 
 export type SourceFormat = 'audio' | 'video' | 'text' | 'mixed';
 
@@ -153,8 +171,8 @@ export interface LearningSource {
   format: SourceFormat;
   skills: SourceSkill[];
   trackingType: TrackingType;
-  totalUnits?: number | null;
-  completedUnits: number;
+  totalUnits?: number | null;   // = totalPages للـ PDF (بند 1)
+  completedUnits: number;       // = highestReachedPage للـ PDF
   goal?: string;
   priority: SourcePriority;
   status: CustomSourceStatus;
@@ -162,10 +180,56 @@ export interface LearningSource {
   lastActivityAt: number | null;
   createdAt: number;
   updatedAt: number;
+
+  // ---- PDF / Study Reader (بند 1) — كل الحقول اختيارية، متفعّلة بس
+  // لما contentType === 'pdf' ---
+  fileType?: 'pdf' | null;
+  fileRef?: string | null;   // مفتاح الـ Blob في IndexedDB (pdfFiles store)
+  fileUrl?: string | null;   // بديل: رابط PDF خارجي
+  fileName?: string | null;
+  fileSize?: number | null;
+  currentPage?: number;      // آخر صفحة كان فيها فعليًا (تتحدث لحظيًا)
+  lastOpenedPage?: number;   // آخر صفحة اتحفظت عليها الجلسة (بند 4)
+  readingMinutesTotal?: number;
 }
 
 export interface LibraryState {
   customSources: LearningSource[];
+}
+
+// ------------------------------------------------------------
+// Study Reader — Highlights + Notes (بند 6-9)
+// النص + الصفحة + الموضع الحرفي (char offset) هو الـ Anchor —
+// مش x/y coordinates — عشان يفضل ثابت مع الـ Zoom وإعادة الفتح.
+// ------------------------------------------------------------
+export type HighlightColor = 'yellow' | 'green' | 'blue' | 'red';
+
+export interface TextAnchor {
+  page: number;
+  text: string;       // النص المحدد بالظبط (للتحقق ولإعادة البحث)
+  charStart: number;  // موضع البداية جوه نص الصفحة المستخرج بالكامل
+  charEnd: number;
+}
+
+export interface PdfHighlight {
+  id: string;
+  sourceId: string;
+  page: number;
+  text: string;
+  color: HighlightColor;
+  anchor: TextAnchor;
+  createdAt: number;
+}
+
+export interface PdfNote {
+  id: string;
+  sourceId: string;
+  page: number;
+  selectedText: string;
+  note: string;
+  anchor: TextAnchor;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface CarryoverState {

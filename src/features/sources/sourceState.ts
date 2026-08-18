@@ -96,7 +96,7 @@ export const TRACKING_LABEL_PLURAL: Record<LearningSource['trackingType'], strin
 
 export const CONTENT_TYPE_LABEL: Record<ContentTypeKey, string> = {
   listening: 'استماع', speaking: 'تحدث', video: 'مشاهدة', book: 'كتاب', course: 'دورة',
-  podcast: 'بودكاست', article: 'مقال', website: 'موقع', vocabulary: 'مفردات', other: 'مصدر آخر'
+  podcast: 'بودكاست', article: 'مقال', website: 'موقع', vocabulary: 'مفردات', pdf: 'PDF', other: 'مصدر آخر'
 };
 
 export const TRACKING_SUGGESTIONS: Record<ContentTypeKey, LearningSource['trackingType'][]> = {
@@ -109,5 +109,6 @@ export const TRACKING_SUGGESTIONS: Record<ContentTypeKey, LearningSource['tracki
   article: ['manual'],
   website: ['manual'],
   vocabulary: ['manual'],
+  pdf: ['pages'],
   other: ['manual']
 };

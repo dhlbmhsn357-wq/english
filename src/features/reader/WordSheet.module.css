@@ -1,0 +1,22 @@
+.wordHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.word { font-size: var(--text-2xl); font-weight: 900; color: var(--text); direction: ltr; font-family: var(--font-heading); }
+.speakBtn {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--gold-dim);
+  color: var(--primary);
+  border: none;
+}
+
+.hint { font-size: var(--text-sm); color: var(--text-faint); margin-bottom: var(--space-3); }
+.error { font-size: var(--text-sm); color: var(--danger); margin-bottom: var(--space-3); }
+.translation { font-size: var(--text-lg); font-weight: 700; color: var(--primary); margin-bottom: var(--space-4); }
+
+.sentenceBox { background: var(--surface-2); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-4); }
+.sentenceLabel { font-size: var(--text-xs); color: var(--text-muted); margin-bottom: 4px; }
+.sentence { font-size: var(--text-sm); color: var(--text); line-height: 1.6; direction: ltr; text-align: left; }
+
+.dupBox { background: var(--surface-2); border-radius: var(--radius-md); padding: var(--space-3); }
+.dupTitle { font-size: var(--text-sm); font-weight: 700; color: var(--text); margin-bottom: var(--space-3); text-align: center; }
+.dupActions { display: flex; flex-direction: column; gap: 6px; }

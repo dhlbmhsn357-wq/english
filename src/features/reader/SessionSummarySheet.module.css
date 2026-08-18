@@ -1,0 +1,14 @@
+.iconWrap {
+  display: flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px;
+  margin: 0 auto var(--space-4);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(150deg, var(--gold-dim), var(--teal-dim));
+  color: var(--primary);
+}
+.title { font-size: var(--text-lg); font-weight: 900; color: var(--text); margin-bottom: var(--space-5); font-family: var(--font-heading); text-align: center; }
+
+.statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-5); }
+.stat { text-align: center; }
+.statNum { font-size: var(--text-lg); font-weight: 900; color: var(--primary); font-family: var(--font-heading); }
+.statLabel { font-size: 10px; color: var(--text-muted); }

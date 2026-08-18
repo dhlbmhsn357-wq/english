@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useStore } from './store/useStore';
 import { AppHeader } from './components/AppHeader';
 import { BottomNav, type PageKey } from './components/BottomNav';
@@ -10,9 +10,13 @@ import { LibraryPage } from './features/sources/LibraryPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { SessionSheet } from './features/session/SessionSheet';
 import { PhaseCompleteModal } from './features/progress/PhaseCompleteModal';
+import { SessionSummarySheet } from './features/reader/SessionSummarySheet';
 import { getNextEpisodeNumber } from './lib/taskEngine';
 import './styles/tokens.css';
 import './styles/layout.css';
+
+// PDF.js تقيلة نسبيًا (~1MB) — تتحمّل بس لما المستخدم فعليًا يفتح القارئ
+const PdfReaderPage = lazy(() => import('./features/reader/PdfReaderPage').then(m => ({ default: m.PdfReaderPage })));
 
 export default function App() {
   const hydrate = useStore(s => s.hydrate);
@@ -30,6 +34,13 @@ export default function App() {
   const [page, setPage] = useState<PageKey>('today');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [readerSourceId, setReaderSourceId] = useState<string | null>(null);
+  const [readerJumpPage, setReaderJumpPage] = useState<number | undefined>(undefined);
+
+  function openReader(sourceId: string, jumpPage?: number) {
+    setReaderJumpPage(jumpPage);
+    setReaderSourceId(sourceId);
+  }
 
   useEffect(() => {
     hydrate();
@@ -75,6 +86,14 @@ export default function App() {
     );
   }
 
+  if (readerSourceId) {
+    return (
+      <Suspense fallback={<div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>جاري تحميل القارئ...</div>}>
+        <PdfReaderPage sourceId={readerSourceId} jumpToPage={readerJumpPage} onExit={() => { setReaderSourceId(null); setReaderJumpPage(undefined); }} />
+      </Suspense>
+    );
+  }
+
   return (
     <div className="app-shell">
       <OfflineBadge />
@@ -91,15 +110,18 @@ export default function App() {
       {page === 'today' && <TodayPage onStartSession={handleStartSession} />}
       {page === 'library' && (
         <div className="main-column">
-          <LibraryPage onContinueSource={(sourceName: string) => {
-            const episode = getNextEpisodeNumber(sourceName, progress);
-            handleStartSession('library', sourceName, episode, false);
-          }} />
+          <LibraryPage
+            onContinueSource={(sourceName: string) => {
+              const episode = getNextEpisodeNumber(sourceName, progress);
+              handleStartSession('library', sourceName, episode, false);
+            }}
+            onOpenReader={openReader}
+          />
         </div>
       )}
       {page === 'progress' && (
         <div className="main-column">
-          <ProgressPage />
+          <ProgressPage onOpenReader={openReader} />
         </div>
       )}
 
@@ -107,6 +129,7 @@ export default function App() {
       <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <SessionSheet />
       <PhaseCompleteModal />
+      <SessionSummarySheet />
       <Toast />
     </div>
   );
