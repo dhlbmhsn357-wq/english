@@ -191,8 +191,15 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      // نفس الحل الحرج فوق — نضمنه هنا كمان مباشرة على الـ context عشان منعتمدش
+      // على وراثة CSS بس (لو DOM اتغيّر مستقبلًا الـ context برضه يفضل LTR).
+      ctx.direction = 'ltr';
 
-      renderTask = pdfPage.render({ canvasContext: ctx, viewport, canvas });
+      // ملاحظة: API الخاص بـ pdfjs-dist v6 بيوصي إن لو استخدمنا canvasContext
+      // (عشان نتحكم في الـ DPI transform بنفسنا) لازم canvas: null صراحة، بدل ما
+      // نبعت الاتنين مع بعض (سلوك غير موثّق/undefined). السبب الحقيقي لتشوّه
+      // النص كان direction الموروث من RTL (شوف ctx.direction فوق) مش ده.
+      renderTask = pdfPage.render({ canvasContext: ctx, viewport, canvas: null });
       await renderTask.promise;
       if (myGen !== renderGenRef.current) return;
 
@@ -446,8 +453,14 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
         )}
         {loadState === 'ready' && (
           <div className={styles.pageWrap} onClick={e => e.stopPropagation()}>
-            <canvas ref={canvasRef} className={styles.canvas} />
-            <div ref={textLayerRef} className={`${styles.textLayer} textLayer`} />
+            {/* بند حرج (الحل النهائي الحقيقي لتشوّه النص) — التطبيق كله RTL (dir على body)،
+                والـ direction ده بيتوّرث لـ Canvas 2D context تلقائيًا. لما pdf.js يرسم
+                حروف إنجليزية/PDF عادية بـ fillText() على context اتجاهه rtl، المتصفح
+                بيعيد ترتيب/تموضع الحروف بمنطق bidi غلط — وده اللي كان بيسبب سقوط أول
+                حرف من كل كلمة وظهور فراغات عشوائية، بغض النظر عن الخط أو محتوى الملف.
+                لازم dir="ltr" صريح هنا عشان الـ canvas يرسم بإحداثيات pdf.js الطبيعية. */}
+            <canvas ref={canvasRef} className={styles.canvas} dir="ltr" />
+            <div ref={textLayerRef} className={`${styles.textLayer} textLayer`} dir="ltr" />
           </div>
         )}
       </div>
