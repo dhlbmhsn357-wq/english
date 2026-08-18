@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pdfjsLib, type PDFDocumentProxy } from '../../lib/pdfjs';
 import { getPdfFile, getHighlightsForSource, getNotesForSource, saveHighlight, saveNote as dbSaveNote } from '../../lib/db';
-import { buildPageText, getSelectionAnchor, wrapRange, clearHighlightSpans, HIGHLIGHT_CLASS } from './textAnchor';
+import { buildPageText, getSelectionAnchor, buildRangeFromOffsets, rangeToRelativeRects, charOffsetOf, type RelativeRect } from './textAnchor';
 import { SelectionToolbar } from './SelectionToolbar';
 import { WordSheet } from './WordSheet';
 import { NoteSheet } from './NoteSheet';
@@ -41,6 +41,7 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
   const [fullscreen, setFullscreen] = useState(false);
 
   const [highlights, setHighlights] = useState<PdfHighlight[]>([]);
+  const [highlightBoxes, setHighlightBoxes] = useState<{ id: string; color: HighlightColor; rects: RelativeRect[] }[]>([]);
   const [notes, setNotes] = useState<PdfNote[]>([]);
   const [selectionInfo, setSelectionInfo] = useState<{ rect: { top: number; left: number; width: number }; text: string; anchor: { charStart: number; charEnd: number } } | null>(null);
   const [wordSheet, setWordSheet] = useState<{ word: string; sentence: string } | null>(null);
@@ -225,14 +226,22 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
       textDivsRef.current = divs;
       pageTextRef.current = buildPageText(divs);
 
-      // إعادة رسم الـ Highlights المحفوظة لهذه الصفحة — ثابتة مع الـ Zoom لأنها char-offset مش x/y
-      clearHighlightSpans(textLayerEl, HIGHLIGHT_CLASS);
-      highlights.filter(h => h.page === page).forEach(h => {
-        wrapRange(divs, h.anchor.charStart, h.anchor.charEnd, HIGHLIGHT_CLASS, {
-          backgroundColor: HIGHLIGHT_HEX[h.color] + '55',
-          borderRadius: '2px'
-        });
-      });
+      // إعادة حساب مستطيلات الـ Highlights المحفوظة لهذه الصفحة — ثابتة مع الـ
+      // Zoom لأنها char-offset مش x/y. الحل النهائي: بنرسمها كطبقة overlay
+      // منفصلة تمامًا (مش بنلمس Text nodes الحقيقية أبدًا)، عشان النص الأصلي
+      // المخفي بتاع PDF.js يفضل سليم 100% ومفيش أي احتمال يتكرر أو يظهر بخط
+      // صغير غلط — المشكلة القديمة كانت بالظبط من تقسيم الـ Text nodes دي.
+      const boxes = highlights
+        .filter(h => h.page === page)
+        .map(h => {
+          const range = buildRangeFromOffsets(divs, h.anchor.charStart, h.anchor.charEnd);
+          if (!range) return null;
+          const rects = rangeToRelativeRects(range, textLayerEl);
+          if (!rects.length) return null;
+          return { id: h.id, color: h.color, rects };
+        })
+        .filter((b): b is { id: string; color: HighlightColor; rects: RelativeRect[] } => b !== null);
+      setHighlightBoxes(boxes);
     }
 
     renderPage().catch(e => console.error('renderPage failed:', e));
@@ -279,6 +288,114 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
     document.addEventListener('selectionchange', onSelectionChange);
     return () => document.removeEventListener('selectionchange', onSelectionChange);
   }, []);
+
+  // ============================================================
+  // الحل النهائي للتحديد (بند: "يحدد معظم الصفحة" / "يحدد بعيد هنا") — تبيّن
+  // إن تحديد المتصفح الأصلي (native mousedown-drag selection) نفسه مش موثوق
+  // فوق طبقة نص PDF.js، لأن كل سطر معمول بـ scaleX منفصل عشان يطابق عرض
+  // الحروف الأصلي بالظبط — وده بيكسر خوارزمية "حدود الكلمة/السحب" المدمجة في
+  // المتصفح حتى لضغطة واحدة بسيطة من غير سحب. الحل: نبني الـ Range يدويًا
+  // بالكامل بنفسنا من إحداثيات pointerdown/pointerup مباشرة (caretRangeFromPoint
+  // + الموضع الحرفي الكلي)، ومنعتمدش على نتيجة تحديد المتصفح أبدًا.
+  // ============================================================
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  function caretPositionAt(x: number, y: number): { node: Text; offset: number } | null {
+    type LegacyDoc = Document & {
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+      caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    };
+    const doc = document as LegacyDoc;
+    if (doc.caretRangeFromPoint) {
+      const r = doc.caretRangeFromPoint(x, y);
+      if (r && r.startContainer.nodeType === Node.TEXT_NODE) return { node: r.startContainer as Text, offset: r.startOffset };
+    }
+    if (doc.caretPositionFromPoint) {
+      const p = doc.caretPositionFromPoint(x, y);
+      if (p && p.offsetNode.nodeType === Node.TEXT_NODE) return { node: p.offsetNode as Text, offset: p.offset };
+    }
+    return null;
+  }
+
+  function divBoundsAt(divs: HTMLElement[], globalOffset: number): { start: number; end: number } | null {
+    // نفس منطق الحدّ الأعلى exclusive في buildRangeFromOffsets — عشان لو الموضع
+    // بالظبط على حدّ مشترك بين عنصرين متلاصقين، نفضّل العنصر التالي (اللي
+    // المستخدم ضغط عليه فعليًا) مش العنصر السابق اللي بيخلص عنده بالصدفة.
+    let offset = 0;
+    for (let i = 0; i < divs.length; i++) {
+      const len = (divs[i].textContent || '').length;
+      const divEnd = offset + len;
+      const isLastDiv = i === divs.length - 1;
+      if (globalOffset >= offset && (globalOffset < divEnd || (isLastDiv && globalOffset === divEnd))) {
+        return { start: offset, end: divEnd };
+      }
+      offset = divEnd;
+    }
+    return null;
+  }
+
+  function applyOffsetSelection(charStart: number, charEnd: number) {
+    const range = buildRangeFromOffsets(textDivsRef.current, charStart, charEnd);
+    if (!range) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function handleTextLayerPointerDown(e: React.PointerEvent) {
+    if (!e.isPrimary) return; // تجاهل لمسات الـ Pinch-Zoom التانية
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+  }
+
+  function handleTextLayerPointerUp(e: React.PointerEvent) {
+    if (!e.isPrimary) return;
+    const start = dragStartRef.current;
+    dragStartRef.current = null;
+    if (!start) return;
+
+    const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+    const startCaret = caretPositionAt(start.x, start.y);
+    if (!startCaret) return;
+    const startOffset = charOffsetOf(textDivsRef.current, startCaret.node, startCaret.offset);
+    if (startOffset === null) return;
+
+    if (moved < 6) {
+      // ضغطة بسيطة (Tap) — نحدد الكلمة اللي تحت الإصبع/الماوس بالظبط، مش أكتر.
+      // مهم: نص الصفحة الكلي (pageTextRef) مبني بتجميع كل عناصر PDF.js من غير
+      // أي فاصل بينهم، فلو عنصرين متجاورين في الترتيب (مش بالضرورة بصريًا
+      // جنب بعض) بيخلصوا/يبدأوا بحرف، ممكن يبانوا "كلمة واحدة" غلط في النص
+      // المسطّح. الحل: نمنع توسيع حدود الكلمة إنه يعدّي حدود الـ div الأصلي
+      // اللي المستخدم ضغط عليه فعليًا — كل عنصر نصي من PDF.js أصلًا كلمة أو
+      // عبارة قصيرة قائمة بذاتها، فده الحد الطبيعي والآمن للتحديد بالضغطة.
+      const divBounds = divBoundsAt(textDivsRef.current, startOffset);
+      const text = pageTextRef.current;
+      const isWordChar = (ch: string) => /[\p{L}\p{N}']/u.test(ch);
+      const lo = divBounds ? divBounds.start : 0;
+      const hi = divBounds ? divBounds.end : text.length;
+      let anchor = startOffset;
+      if (anchor > lo && !isWordChar(text[anchor] ?? '') && isWordChar(text[anchor - 1] ?? '')) anchor -= 1;
+      let s = anchor;
+      let en = anchor;
+      while (s > lo && isWordChar(text[s - 1])) s--;
+      while (en < hi && isWordChar(text[en])) en++;
+      if (en <= s) { window.getSelection()?.removeAllRanges(); return; } // ضغط على مسافة/علامة ترقيم
+      applyOffsetSelection(s, en);
+      return;
+    }
+
+    // سحب حقيقي (تحديد عبارة/جملة) — بنبني النطاق يدويًا من نقطتي البداية
+    // والنهاية الفعليتين، مش من تحديد المتصفح الأصلي غير الموثوق.
+    const endCaret = caretPositionAt(e.clientX, e.clientY);
+    if (!endCaret) return;
+    const endOffset = charOffsetOf(textDivsRef.current, endCaret.node, endCaret.offset);
+    if (endOffset === null) return;
+
+    const from = Math.min(startOffset, endOffset);
+    const to = Math.max(startOffset, endOffset);
+    if (to <= from) { window.getSelection()?.removeAllRanges(); return; }
+    applyOffsetSelection(from, to);
+  }
 
   function surroundingSentence(charStart: number, charEnd: number): string {
     const text = pageTextRef.current;
@@ -460,7 +577,29 @@ export function PdfReaderPage({ sourceId, jumpToPage, onExit }: PdfReaderPagePro
                 حرف من كل كلمة وظهور فراغات عشوائية، بغض النظر عن الخط أو محتوى الملف.
                 لازم dir="ltr" صريح هنا عشان الـ canvas يرسم بإحداثيات pdf.js الطبيعية. */}
             <canvas ref={canvasRef} className={styles.canvas} dir="ltr" />
-            <div ref={textLayerRef} className={`${styles.textLayer} textLayer`} dir="ltr" />
+            {/* طبقة الـ Highlights — منفصلة تمامًا عن نص PDF.js الحقيقي (overlay مستطيلات
+                بس، مفيش لمس لأي Text node). كده التظليل بيقع بالظبط مكانه الصح، ومفيش
+                احتمال يتكرر النص أو يظهر بخط صغير غلط أبدًا. */}
+            <div className={styles.highlightLayer} aria-hidden="true">
+              {highlightBoxes.map(box => (
+                <div key={box.id}>
+                  {box.rects.map((r, i) => (
+                    <div
+                      key={i}
+                      className={styles.highlightRect}
+                      style={{ top: r.top, left: r.left, width: r.width, height: r.height, background: HIGHLIGHT_HEX[box.color] }}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div
+              ref={textLayerRef}
+              className={`${styles.textLayer} textLayer`}
+              dir="ltr"
+              onPointerDown={handleTextLayerPointerDown}
+              onPointerUp={handleTextLayerPointerUp}
+            />
           </div>
         )}
       </div>

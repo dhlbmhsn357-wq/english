@@ -73,8 +73,22 @@
   transform-origin: 0% 0%;
   user-select: text;
 }
-.textLayer :global(.msr-highlight) {
-  border-radius: 2px;
+
+/* طبقة الـ Highlights — overlay مستقل تمامًا عن نص PDF.js، بيقف بين الـ Canvas
+   وطبقة النص الشفافة. مفيش أي تلاعب في DOM النص الحقيقي أبدًا. */
+.highlightLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: clip;
+}
+.highlightRect {
+  /* صفحة الـ PDF نفسها بيضاء دايمًا (زي أي ورقة حقيقية) بغض النظر عن ثيم
+     التطبيق، فـ multiply هنا بيدّي إحساس القلم الفلوماستر الحقيقي في الحالتين. */
+  position: absolute;
+  border-radius: 3px;
+  mix-blend-mode: multiply;
+  opacity: 0.55;
 }
 
 .footer {

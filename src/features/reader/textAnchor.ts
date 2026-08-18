@@ -66,65 +66,107 @@ function nodeOffsetWithin(root: HTMLElement, node: Node, offset: number): number
 }
 
 /**
- * يلوّن نطاق [charStart, charEnd) جوه الـ textDivs بلون معيّن —
- * بيشتغل حتى لو النطاق ممتد على أكتر من div واحد.
+ * يحسب الموضع الحرفي الكلي (global char offset) لنقطة معيّنة (Text node +
+ * offset محلي) جوه نص الصفحة الكامل. ده الأساس اللي بيخلينا نبني أي Range
+ * (تحديد كلمة واحدة أو سحب عبارة) يدويًا وبثقة، من غير ما نعتمد على تحديد
+ * المتصفح الأصلي (اللي بيتكسر مع الـ transform اللي PDF.js بيحطه على كل سطر).
  */
-export function wrapRange(textDivs: HTMLElement[], charStart: number, charEnd: number, className: string, style: Partial<CSSStyleDeclaration>) {
+export function charOffsetOf(textDivs: HTMLElement[], node: Node, localOffset: number): number | null {
   let offset = 0;
   for (const div of textDivs) {
+    if (div.contains(node)) {
+      return offset + nodeOffsetWithin(div, node, localOffset);
+    }
+    offset += (div.textContent || '').length;
+  }
+  return null;
+}
+
+/**
+ * يحسب موضع نص فعلي (Text node + offset محلي) داخل عنصر معيّن، من موضع
+ * حرفي (character offset) نسبي لبداية العنصر ده.
+ */
+function locateTextNode(root: HTMLElement, localOffset: number): { node: Text; offset: number } | null {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let pos = 0;
+  let n = walker.nextNode() as Text | null;
+  let last: Text | null = null;
+  while (n) {
+    const len = n.textContent?.length || 0;
+    if (localOffset <= pos + len) return { node: n, offset: localOffset - pos };
+    pos += len;
+    last = n;
+    n = walker.nextNode() as Text | null;
+  }
+  // لو الموضع بعد آخر حرف بالظبط (حافة النهاية) — رجّع آخر نقطة ممكنة
+  if (last) return { node: last, offset: last.textContent?.length || 0 };
+  return null;
+}
+
+/**
+ * يبني Range واحد يغطي [charStart, charEnd) عبر عدة textDivs لو احتاج الأمر،
+ * من غير ما يلمس/يقسّم أي Text node حقيقي (القراءة فقط — آمن 100%).
+ */
+export function buildRangeFromOffsets(textDivs: HTMLElement[], charStart: number, charEnd: number): Range | null {
+  let offset = 0;
+  let start: { node: Text; offset: number } | null = null;
+  let end: { node: Text; offset: number } | null = null;
+
+  // ملاحظة مهمة: عناصر نص PDF.js بتتلاصق في الترتيب المسطّح من غير أي فاصل
+  // بينها (buildPageText)، فموضع حرفي زي "11" ممكن يبقى بالظبط نهاية العنصر
+  // الأول *وكمان* بداية العنصر التاني في نفس الوقت — لازم نفضّل العنصر
+  // الصح (اللي المستخدم ضغط عليه فعليًا) مش أول عنصر بيتطابق بالصدفة.
+  // start بيفضّل العنصر التالي عند التساوي (حدّه أعلى exclusive)، وend بيفضّل
+  // العنصر السابق عند التساوي (حدّه أدنى exclusive) — كده الاتنين بيتفقوا على
+  // نفس المنطقة الصح بدل ما يقعوا في عنصر مجاور غلط.
+  for (let i = 0; i < textDivs.length; i++) {
+    const div = textDivs[i];
     const divLen = (div.textContent || '').length;
     const divStart = offset;
     const divEnd = offset + divLen;
     offset = divEnd;
 
-    const start = Math.max(charStart, divStart) - divStart;
-    const end = Math.min(charEnd, divEnd) - divStart;
-    if (end <= start) continue;
-
-    wrapWithinNode(div, start, end, className, style);
-  }
-}
-
-function wrapWithinNode(root: HTMLElement, start: number, end: number, className: string, style: Partial<CSSStyleDeclaration>) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const textNodes: Text[] = [];
-  let n = walker.nextNode();
-  while (n) { textNodes.push(n as Text); n = walker.nextNode(); }
-
-  let pos = 0;
-  for (const textNode of textNodes) {
-    const len = textNode.textContent?.length || 0;
-    const nodeStart = pos;
-    const nodeEnd = pos + len;
-    pos = nodeEnd;
-    if (end <= nodeStart || start >= nodeEnd) continue;
-
-    const localStart = Math.max(0, start - nodeStart);
-    const localEnd = Math.min(len, end - nodeStart);
-    if (localEnd <= localStart) continue;
-
-    try {
-      const range = document.createRange();
-      range.setStart(textNode, localStart);
-      range.setEnd(textNode, localEnd);
-      const mark = document.createElement('span');
-      mark.className = className;
-      Object.assign(mark.style, style);
-      range.surroundContents(mark);
-    } catch {
-      // لو range عبر أكتر من text node (نادر بعد الـ split) — تجاهل بأمان
+    if (!start) {
+      const isLastDiv = i === textDivs.length - 1;
+      if (charStart >= divStart && (charStart < divEnd || (isLastDiv && charStart === divEnd))) {
+        start = locateTextNode(div, charStart - divStart);
+      }
     }
+    if (!end) {
+      const isFirstDiv = i === 0;
+      if (charEnd <= divEnd && (charEnd > divStart || (isFirstDiv && charEnd === divStart))) {
+        end = locateTextNode(div, charEnd - divStart);
+      }
+    }
+    if (start && end) break;
+  }
+  if (!start || !end) return null;
+
+  try {
+    const range = document.createRange();
+    range.setStart(start.node, start.offset);
+    range.setEnd(end.node, end.offset);
+    return range;
+  } catch {
+    return null;
   }
 }
 
-/** يشيل كل الـ highlight spans من صفحة معيّنة قبل إعادة رسمها */
-export function clearHighlightSpans(container: HTMLElement, className: string) {
-  const spans = container.querySelectorAll(`.${className}`);
-  spans.forEach(span => {
-    const parent = span.parentNode;
-    if (!parent) return;
-    while (span.firstChild) parent.insertBefore(span.firstChild, span);
-    parent.removeChild(span);
-    parent.normalize();
-  });
+export interface RelativeRect { top: number; left: number; width: number; height: number; }
+
+/**
+ * يحوّل Range لمجموعة مستطيلات (سطر بسطر لو التحديد ممتد على أكتر من سطر)
+ * بإحداثيات نسبية لعنصر الحاوية — عشان نرسمها كطبقة overlay منفصلة تمامًا
+ * عن نص PDF.js الحقيقي (فمفيش أي احتمال إنها تكسر أو تكرر النص الأصلي).
+ */
+export function rangeToRelativeRects(range: Range, container: HTMLElement): RelativeRect[] {
+  const containerRect = container.getBoundingClientRect();
+  return Array.from(range.getClientRects())
+    .filter(r => r.width > 0.5 && r.height > 0.5)
+    .map(r => ({
+      top: r.top - containerRect.top,
+      left: r.left - containerRect.left,
+      width: r.width,
+      height: r.height
+    }));
 }

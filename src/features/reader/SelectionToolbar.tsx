@@ -34,7 +34,14 @@ export function SelectionToolbar({ rect, selectedText, onHighlight, onTranslate,
     <div className={styles.toolbar} style={{ top, left }} onMouseDown={e => e.preventDefault()}>
       <div className={styles.colors}>
         {COLORS.map(c => (
-          <button key={c.key} className={styles.colorDot} style={{ background: c.hex }} title={c.label} onClick={() => onHighlight(c.key)} />
+          <button
+            key={c.key}
+            className={styles.colorDot}
+            style={{ background: c.hex, ['--dot-color' as string]: c.hex }}
+            title={c.label}
+            aria-label={c.label}
+            onClick={() => onHighlight(c.key)}
+          />
         ))}
       </div>
       <div className={styles.divider} />
